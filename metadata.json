@@ -1,0 +1,6 @@
+{
+  "name": "Ajedrez Táctico - Generador de Jaque Mate",
+  "description": "Generador de ejercicios de jaque mate en 2, 3 y 4 jugadas para principiantes e intermedios con tablero interactivo, solución en notación algebraica estándar, exportación a PDF y modo de entrenamiento personalizado.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
