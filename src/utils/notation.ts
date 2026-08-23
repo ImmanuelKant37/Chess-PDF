@@ -93,3 +93,18 @@ export function formatMoveSequence(sanMoves: string[], format: 'spanish' | 'inte
 
   return parts.join(' ');
 }
+
+export function formatSanForDisplay(
+  san: string,
+  format: 'spanish' | 'international' | 'figurine' | string = 'spanish',
+  isWhite: boolean = true
+): string {
+  if (!san) return '';
+  if (format === 'spanish') {
+    return convertSanToSpanish(san);
+  }
+  if (format === 'figurine') {
+    return convertSanToFigurine(san, isWhite);
+  }
+  return san;
+}

@@ -12,12 +12,16 @@ import {
   Zap,
   RotateCcw,
   Share2,
-  Check
+  Check,
+  Bot,
+  Swords
 } from 'lucide-react';
 
+export type AppTab = 'vs-ai' | 'tournament' | 'selfplay' | 'player' | 'training' | 'library';
+
 interface HeaderProps {
-  activeTab: 'player' | 'training' | 'library' | 'selfplay';
-  setActiveTab: (tab: 'player' | 'training' | 'library' | 'selfplay') => void;
+  activeTab: AppTab;
+  setActiveTab: (tab: AppTab) => void;
   onOpenPDF: () => void;
   stats: {
     solvedCount: number;
@@ -47,7 +51,7 @@ export const Header: React.FC<HeaderProps> = ({
   const handleShare = async () => {
     const shareData = {
       title: 'Ajedrez Táctico IA - Entrenador & Jaque Mate',
-      text: 'Entrena ajedrez con IA, Stockfish, sugerencias didácticas y mates en 2, 3 y 4 jugadas.',
+      text: 'Entrena ajedrez con IA, juega contra bots de todos los niveles, compite en torneos y resuelve mates en 2, 3 y 4 jugadas.',
       url: window.location.href,
     };
 
@@ -78,7 +82,7 @@ export const Header: React.FC<HeaderProps> = ({
             <img
               src="/icon.svg"
               alt="Ajedrez Táctico Icono"
-              className="w-9 h-9 sm:w-10 sm:h-10 rounded-2xl shadow-md shadow-blue-500/20 border border-blue-400/30 object-cover"
+              className="w-9 h-9 sm:w-10 sm:h-10 rounded-2xl shadow-md shadow-indigo-500/20 border border-indigo-400/30 object-cover"
               referrerPolicy="no-referrer"
             />
             <div>
@@ -86,74 +90,106 @@ export const Header: React.FC<HeaderProps> = ({
                 <h1 className="text-sm sm:text-base font-black tracking-tight text-slate-900 dark:text-white">
                   Ajedrez Táctico
                 </h1>
-                <span className="hidden sm:inline-flex items-center px-2 py-0.5 rounded-full text-[9px] font-extrabold tracking-wider uppercase bg-blue-500/10 text-blue-600 dark:text-blue-400 border border-blue-500/20">
-                  Mate en 2·3·4
+                <span className="hidden sm:inline-flex items-center px-2 py-0.5 rounded-full text-[9px] font-extrabold tracking-wider uppercase bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 border border-indigo-500/20">
+                  IA & Torneos
                 </span>
               </div>
               <p className="hidden md:block text-[11px] text-slate-500 dark:text-slate-400 font-medium">
-                Generador de mates & Auto-Juego IA + Stockfish
+                Vs IA por niveles • Torneos eliminatorios • Tutor y Análisis Stockfish
               </p>
             </div>
           </div>
 
           {/* Navigation Tabs - Bento Pill Style */}
-          <nav className="flex items-center p-1.5 bg-slate-100/90 dark:bg-slate-900/90 border border-slate-200/80 dark:border-slate-800/80 rounded-2xl">
+          <nav className="flex items-center p-1 bg-slate-100/90 dark:bg-slate-900/90 border border-slate-200/80 dark:border-slate-800/80 rounded-2xl overflow-x-auto max-w-[50vw] sm:max-w-none scrollbar-none">
+            {/* VS IA TAB */}
+            <button
+              id="nav-tab-vs-ai"
+              onClick={() => setActiveTab('vs-ai')}
+              className={`px-3 py-1.5 rounded-xl text-xs font-bold flex items-center gap-1.5 transition-all duration-200 cursor-pointer whitespace-nowrap ${
+                activeTab === 'vs-ai'
+                  ? 'bg-white dark:bg-slate-800 text-indigo-600 dark:text-indigo-400 shadow-sm border border-slate-200/60 dark:border-slate-700/60'
+                  : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200'
+              }`}
+            >
+              <Bot className="w-3.5 h-3.5 text-indigo-500" />
+              <span>Vs IA</span>
+            </button>
+
+            {/* TORNEO TAB */}
+            <button
+              id="nav-tab-tournament"
+              onClick={() => setActiveTab('tournament')}
+              className={`px-3 py-1.5 rounded-xl text-xs font-bold flex items-center gap-1.5 transition-all duration-200 cursor-pointer whitespace-nowrap ${
+                activeTab === 'tournament'
+                  ? 'bg-white dark:bg-slate-800 text-amber-600 dark:text-amber-400 shadow-sm border border-slate-200/60 dark:border-slate-700/60'
+                  : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200'
+              }`}
+            >
+              <Trophy className="w-3.5 h-3.5 text-amber-500" />
+              <span>Torneos</span>
+            </button>
+
+            {/* AUTO JUEGO TAB */}
             <button
               id="nav-tab-selfplay"
               onClick={() => setActiveTab('selfplay')}
-              className={`px-3.5 py-1.5 sm:py-2 rounded-xl text-xs font-bold flex items-center gap-1.5 transition-all duration-200 ${
+              className={`px-3 py-1.5 rounded-xl text-xs font-bold flex items-center gap-1.5 transition-all duration-200 cursor-pointer whitespace-nowrap ${
                 activeTab === 'selfplay'
                   ? 'bg-white dark:bg-slate-800 text-blue-600 dark:text-blue-400 shadow-sm border border-slate-200/60 dark:border-slate-700/60'
                   : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200'
               }`}
             >
               <Sparkles className="w-3.5 h-3.5 text-blue-500" />
-              <span className="hidden md:inline">Auto-Juego con IA</span>
-              <span className="md:hidden">Auto-Juego</span>
+              <span className="hidden lg:inline">Tutor & Auto-Juego</span>
+              <span className="lg:hidden">Tutor</span>
             </button>
 
+            {/* GENERADOR MATE TAB */}
             <button
               id="nav-tab-player"
               onClick={() => setActiveTab('player')}
-              className={`px-3.5 py-1.5 sm:py-2 rounded-xl text-xs font-bold flex items-center gap-1.5 transition-all duration-200 ${
+              className={`px-3 py-1.5 rounded-xl text-xs font-bold flex items-center gap-1.5 transition-all duration-200 cursor-pointer whitespace-nowrap ${
                 activeTab === 'player'
-                  ? 'bg-white dark:bg-slate-800 text-blue-600 dark:text-blue-400 shadow-sm border border-slate-200/60 dark:border-slate-700/60'
+                  ? 'bg-white dark:bg-slate-800 text-emerald-600 dark:text-emerald-400 shadow-sm border border-slate-200/60 dark:border-slate-700/60'
                   : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200'
               }`}
             >
-              <Zap className="w-3.5 h-3.5 text-amber-500" />
-              <span className="hidden md:inline">Generador Mate</span>
-              <span className="md:hidden">Mate</span>
+              <Zap className="w-3.5 h-3.5 text-emerald-500" />
+              <span className="hidden lg:inline">Generador Mate</span>
+              <span className="lg:hidden">Mates</span>
             </button>
 
+            {/* ENTRENAMIENTO TAB */}
             <button
               id="nav-tab-training"
               onClick={() => setActiveTab('training')}
-              className={`px-3.5 py-1.5 sm:py-2 rounded-xl text-xs font-bold flex items-center gap-1.5 transition-all duration-200 ${
+              className={`px-3 py-1.5 rounded-xl text-xs font-bold flex items-center gap-1.5 transition-all duration-200 cursor-pointer whitespace-nowrap ${
                 activeTab === 'training'
-                  ? 'bg-white dark:bg-slate-800 text-blue-600 dark:text-blue-400 shadow-sm border border-slate-200/60 dark:border-slate-700/60'
+                  ? 'bg-white dark:bg-slate-800 text-purple-600 dark:text-purple-400 shadow-sm border border-slate-200/60 dark:border-slate-700/60'
                   : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200'
               }`}
             >
-              <Target className="w-3.5 h-3.5 text-emerald-500" />
-              <span className="hidden md:inline">Entrenamiento</span>
-              <span className="md:hidden">Entrenar</span>
+              <Target className="w-3.5 h-3.5 text-purple-500" />
+              <span className="hidden lg:inline">Entrenamiento</span>
+              <span className="lg:hidden">Táctica</span>
             </button>
 
+            {/* BIBLIOTECA TAB */}
             <button
               id="nav-tab-library"
               onClick={() => setActiveTab('library')}
-              className={`px-3.5 py-1.5 sm:py-2 rounded-xl text-xs font-bold flex items-center gap-1.5 transition-all duration-200 ${
+              className={`px-3 py-1.5 rounded-xl text-xs font-bold flex items-center gap-1.5 transition-all duration-200 cursor-pointer whitespace-nowrap ${
                 activeTab === 'library'
-                  ? 'bg-white dark:bg-slate-800 text-blue-600 dark:text-blue-400 shadow-sm border border-slate-200/60 dark:border-slate-700/60'
+                  ? 'bg-white dark:bg-slate-800 text-sky-600 dark:text-sky-400 shadow-sm border border-slate-200/60 dark:border-slate-700/60'
                   : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200'
               }`}
             >
-              <BookOpen className="w-3.5 h-3.5 text-indigo-500" />
-              <span className="hidden md:inline">Biblioteca</span>
-              <span className="md:hidden">Puzzles</span>
+              <BookOpen className="w-3.5 h-3.5 text-sky-500" />
+              <span>Biblioteca</span>
             </button>
           </nav>
+
 
           {/* Right Action Tools & Bento Chips */}
           <div className="flex items-center gap-2 sm:gap-3">

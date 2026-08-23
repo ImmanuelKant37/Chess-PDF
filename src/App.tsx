@@ -17,16 +17,18 @@ import {
 import { Puzzle, TacticalTheme, MateDepth } from './types';
 import { COMPREHENSIVE_PUZZLES } from './data/puzzleDatabase';
 import { TACTICAL_THEMES } from './data/puzzles';
-import { Header } from './components/Header';
+import { Header, AppTab } from './components/Header';
 import { PuzzlePlayer } from './components/PuzzlePlayer';
 import { TrainingMode } from './components/TrainingMode';
 import { PuzzleLibrary } from './components/PuzzleLibrary';
 import { PDFExportModal } from './components/PDFExportModal';
 import { SoloSelfPlayTraining } from './components/SoloSelfPlayTraining';
+import { VsAIMode } from './components/VsAIMode';
+import { TournamentMode } from './components/TournamentMode';
 
 export default function App() {
   // Navigation
-  const [activeTab, setActiveTab] = useState<'player' | 'training' | 'library' | 'selfplay'>('selfplay');
+  const [activeTab, setActiveTab] = useState<AppTab>('vs-ai');
 
   // Puzzles and active index
   const [puzzles, setPuzzles] = useState<Puzzle[]>(COMPREHENSIVE_PUZZLES);
@@ -207,7 +209,23 @@ export default function App() {
 
       {/* Main Container */}
       <main className="flex-1 max-w-7xl mx-auto w-full px-2.5 sm:px-4 lg:px-6 py-2.5 sm:py-4 flex flex-col gap-3 sm:gap-4">
-        {/* TAB 0: AUTO-JUEGO CON IA & TUTOR DE ENTRENAMIENTO */}
+        {/* TAB 0: MODO VS IA CON NIVELES */}
+        {activeTab === 'vs-ai' && (
+          <VsAIMode
+            boardTheme="classic"
+            notationFormat={notationFormat}
+          />
+        )}
+
+        {/* TAB 1: MODO TORNEO VS BOTS */}
+        {activeTab === 'tournament' && (
+          <TournamentMode
+            boardTheme="classic"
+            notationFormat={notationFormat}
+          />
+        )}
+
+        {/* TAB 2: AUTO-JUEGO CON IA & TUTOR DE ENTRENAMIENTO */}
         {activeTab === 'selfplay' && (
           <SoloSelfPlayTraining
             boardTheme="classic"

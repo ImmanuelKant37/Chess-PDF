@@ -185,3 +185,133 @@ export interface PDFExportOptions {
   notationFormat: 'spanish' | 'international' | 'figurine'; // C, A, T, D, R vs N, B, R, Q, K vs ♞, ♝, ♜, ♛, ♚
 }
 
+export type BotDifficulty =
+  | 'novice' // 600-800
+  | 'beginner' // 900-1100
+  | 'casual' // 1200-1350
+  | 'intermediate' // 1450-1650
+  | 'advanced' // 1750-1950
+  | 'master' // 2100-2300
+  | 'grandmaster' // 2500-2800+
+  | 'custom';
+
+export interface BotProfile {
+  id: string;
+  name: string;
+  avatar: string;
+  elo: number;
+  title?: string;
+  category: 'Principiante' | 'Intermedio' | 'Avanzado' | 'Maestros' | 'Leyendas';
+  country: string;
+  countryFlag: string;
+  playStyle: 'Agresivo' | 'Posicional' | 'Táctico' | 'Sólido' | 'Equilibrado' | 'Impredecible';
+  description: string;
+  dialogue: {
+    start: string;
+    goodMove: string;
+    badMove: string;
+    check: string;
+    winning: string;
+    losing: string;
+    win: string;
+    loss: string;
+    draw: string;
+  };
+  depth: number;
+  blunderChance: number; // 0 to 1
+  tacticalAwareness: number; // 0 to 1
+  thinkingTimeMs: number;
+}
+
+export type TimeControlId = 'unlimited' | '1m' | '3m' | '5m' | '10m' | '15m+10';
+
+export interface GameTimeControl {
+  id: TimeControlId;
+  name: string;
+  baseSeconds: number; // 0 for unlimited
+  incrementSeconds: number;
+  category: 'Bala' | 'Blitz' | 'Rápido' | 'Clásico' | 'Zen';
+}
+
+export type GameEndReason =
+  | 'checkmate'
+  | 'stalemate'
+  | 'insufficient_material'
+  | 'threefold_repetition'
+  | 'fifty_moves'
+  | 'time_out'
+  | 'resignation'
+  | 'agreed_draw';
+
+export interface GameVsAIResult {
+  winner: 'user' | 'bot' | 'draw';
+  reason: GameEndReason;
+  movesCount: number;
+  userColor: 'w' | 'b';
+  botId: string;
+  botElo: number;
+  timeSpentSeconds: number;
+  date: string;
+}
+
+export type TournamentFormat = 'knockout' | 'round-robin' | 'arena';
+
+export interface TournamentParticipant {
+  id: string;
+  name: string;
+  avatar: string;
+  isUser: boolean;
+  elo: number;
+  title?: string;
+  countryFlag: string;
+  playStyle: string;
+  points: number;
+  wins: number;
+  draws: number;
+  losses: number;
+  buchholz: number;
+  eliminated?: boolean;
+  botProfileId?: string;
+}
+
+export interface TournamentMatch {
+  id: string;
+  round: number;
+  matchIndex: number;
+  stageName: string; // 'Cuartos de final', 'Semifinales', 'Gran Final', 'Ronda 1', etc.
+  playerWhiteId: string;
+  playerBlackId: string;
+  winnerId: string | null; // null if pending, 'draw' if draw, or participant ID
+  scoreFormatted?: string; // "1 - 0", "0 - 1", "½ - ½"
+  status: 'scheduled' | 'playing' | 'completed';
+  movesHistorySan?: string[];
+  endReason?: string;
+}
+
+export interface TournamentState {
+  id: string;
+  title: string;
+  format: TournamentFormat;
+  roundsTotal: number;
+  currentRound: number;
+  status: 'setup' | 'in_progress' | 'round_completed' | 'finished';
+  timeControl: GameTimeControl;
+  participants: TournamentParticipant[];
+  matches: TournamentMatch[];
+  userPlayerId: string;
+  winnerId?: string;
+  dateStarted: string;
+  dateFinished?: string;
+}
+
+export interface TournamentTrophy {
+  id: string;
+  tournamentTitle: string;
+  format: TournamentFormat;
+  placement: 1 | 2 | 3 | 'participant';
+  date: string;
+  userEloChange: number;
+  points: number;
+  matchesPlayed: number;
+}
+

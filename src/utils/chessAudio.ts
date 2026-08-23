@@ -109,6 +109,10 @@ class ChessSoundSystem {
 
   // Checkmate / Victory Fanfare
   public playMate() {
+    this.playVictory();
+  }
+
+  public playVictory() {
     if (this.isMuted) return;
     this.initContext();
     if (!this.ctx) return;
@@ -134,6 +138,64 @@ class ChessSoundSystem {
 
       osc.start(startTime);
       osc.stop(startTime + 0.4);
+    });
+  }
+
+  public playDefeat() {
+    if (this.isMuted) return;
+    this.initContext();
+    if (!this.ctx) return;
+
+    const notes = [330, 293.66, 261.63, 220]; // Minor descending sadness
+    const now = this.ctx.currentTime;
+
+    notes.forEach((freq, idx) => {
+      if (!this.ctx) return;
+      const osc = this.ctx.createOscillator();
+      const gain = this.ctx.createGain();
+      const startTime = now + idx * 0.1;
+
+      osc.type = 'triangle';
+      osc.frequency.setValueAtTime(freq, startTime);
+
+      gain.gain.setValueAtTime(0, startTime);
+      gain.gain.linearRampToValueAtTime(0.2, startTime + 0.02);
+      gain.gain.exponentialRampToValueAtTime(0.001, startTime + 0.35);
+
+      osc.connect(gain);
+      gain.connect(this.ctx.destination);
+
+      osc.start(startTime);
+      osc.stop(startTime + 0.35);
+    });
+  }
+
+  public playDraw() {
+    if (this.isMuted) return;
+    this.initContext();
+    if (!this.ctx) return;
+
+    const notes = [440, 440];
+    const now = this.ctx.currentTime;
+
+    notes.forEach((freq, idx) => {
+      if (!this.ctx) return;
+      const osc = this.ctx.createOscillator();
+      const gain = this.ctx.createGain();
+      const startTime = now + idx * 0.12;
+
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(freq, startTime);
+
+      gain.gain.setValueAtTime(0, startTime);
+      gain.gain.linearRampToValueAtTime(0.15, startTime + 0.02);
+      gain.gain.exponentialRampToValueAtTime(0.001, startTime + 0.2);
+
+      osc.connect(gain);
+      gain.connect(this.ctx.destination);
+
+      osc.start(startTime);
+      osc.stop(startTime + 0.2);
     });
   }
 
@@ -163,6 +225,7 @@ class ChessSoundSystem {
 }
 
 export const chessAudio = new ChessSoundSystem();
+export const soundSystem = chessAudio;
 
 export function playChessSound(san: string, isCapture: boolean = false, isCheck: boolean = false) {
   if (san.includes('#')) {
