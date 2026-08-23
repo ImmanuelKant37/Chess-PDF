@@ -22,10 +22,11 @@ import { PuzzlePlayer } from './components/PuzzlePlayer';
 import { TrainingMode } from './components/TrainingMode';
 import { PuzzleLibrary } from './components/PuzzleLibrary';
 import { PDFExportModal } from './components/PDFExportModal';
+import { SoloSelfPlayTraining } from './components/SoloSelfPlayTraining';
 
 export default function App() {
   // Navigation
-  const [activeTab, setActiveTab] = useState<'player' | 'training' | 'library'>('player');
+  const [activeTab, setActiveTab] = useState<'player' | 'training' | 'library' | 'selfplay'>('selfplay');
 
   // Puzzles and active index
   const [puzzles, setPuzzles] = useState<Puzzle[]>(COMPREHENSIVE_PUZZLES);
@@ -206,6 +207,14 @@ export default function App() {
 
       {/* Main Container */}
       <main className="flex-1 max-w-7xl mx-auto w-full px-4 sm:px-6 lg:px-8 py-6 sm:py-8 flex flex-col gap-6">
+        {/* TAB 0: AUTO-JUEGO CON IA & TUTOR DE ENTRENAMIENTO */}
+        {activeTab === 'selfplay' && (
+          <SoloSelfPlayTraining
+            boardTheme="classic"
+            notationFormat={notationFormat}
+          />
+        )}
+
         {/* TAB 1: GENERADOR & TABLERO INTERACTIVO */}
         {activeTab === 'player' && (
           <div className="flex flex-col gap-6">

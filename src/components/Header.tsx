@@ -14,8 +14,8 @@ import {
 } from 'lucide-react';
 
 interface HeaderProps {
-  activeTab: 'player' | 'training' | 'library';
-  setActiveTab: (tab: 'player' | 'training' | 'library') => void;
+  activeTab: 'player' | 'training' | 'library' | 'selfplay';
+  setActiveTab: (tab: 'player' | 'training' | 'library' | 'selfplay') => void;
   onOpenPDF: () => void;
   stats: {
     solvedCount: number;
@@ -67,6 +67,20 @@ export const Header: React.FC<HeaderProps> = ({
           {/* Navigation Tabs - Bento Pill Style */}
           <nav className="flex items-center p-1.5 bg-slate-100/90 dark:bg-slate-900/90 border border-slate-200/80 dark:border-slate-800/80 rounded-2xl">
             <button
+              id="nav-tab-selfplay"
+              onClick={() => setActiveTab('selfplay')}
+              className={`px-3.5 py-1.5 sm:py-2 rounded-xl text-xs font-bold flex items-center gap-1.5 transition-all duration-200 ${
+                activeTab === 'selfplay'
+                  ? 'bg-white dark:bg-slate-800 text-blue-600 dark:text-blue-400 shadow-sm border border-slate-200/60 dark:border-slate-700/60'
+                  : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200'
+              }`}
+            >
+              <Sparkles className="w-3.5 h-3.5 text-blue-500" />
+              <span className="hidden md:inline">Auto-Juego con IA</span>
+              <span className="md:hidden">Auto-Juego</span>
+            </button>
+
+            <button
               id="nav-tab-player"
               onClick={() => setActiveTab('player')}
               className={`px-3.5 py-1.5 sm:py-2 rounded-xl text-xs font-bold flex items-center gap-1.5 transition-all duration-200 ${
@@ -76,8 +90,8 @@ export const Header: React.FC<HeaderProps> = ({
               }`}
             >
               <Zap className="w-3.5 h-3.5 text-amber-500" />
-              <span className="hidden md:inline">Generador / Tablero</span>
-              <span className="md:hidden">Tablero</span>
+              <span className="hidden md:inline">Generador Mate</span>
+              <span className="md:hidden">Mate</span>
             </button>
 
             <button

@@ -86,6 +86,41 @@ export interface UserStatistics {
   themeMastery: Record<TacticalTheme, { solved: number; total: number }>;
 }
 
+export interface MoveSuggestion {
+  san: string;
+  from?: string;
+  to?: string;
+  score: number;
+  title: string;
+  tacticalConcept: string;
+  justification: string;
+}
+
+export interface PositionAnalysis {
+  evaluation: number;
+  evaluationText: string;
+  gameStage: 'Apertura' | 'Medio juego' | 'Final';
+  turn: 'w' | 'b';
+  inCheck: boolean;
+  isCheckmate: boolean;
+  isDraw: boolean;
+  whiteSuggestions: MoveSuggestion[];
+  blackSuggestions: MoveSuggestion[];
+  generalAssessment: string;
+  tacticalAlerts: string[];
+  keyTakeaway?: string;
+  aiPowered?: boolean;
+}
+
+export interface PresetPosition {
+  id: string;
+  title: string;
+  category: 'Aperturas' | 'Medio Juego' | 'Finales' | 'Ataques';
+  fen: string;
+  description: string;
+  turn: 'w' | 'b';
+}
+
 export interface PDFExportOptions {
   title: string;
   studentName: string;
@@ -97,3 +132,4 @@ export interface PDFExportOptions {
   puzzles: Puzzle[];
   notationFormat: 'spanish' | 'international' | 'figurine'; // C, A, T, D, R vs N, B, R, Q, K vs ♞, ♝, ♜, ♛, ♚
 }
+

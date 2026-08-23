@@ -163,3 +163,15 @@ class ChessSoundSystem {
 }
 
 export const chessAudio = new ChessSoundSystem();
+
+export function playChessSound(san: string, isCapture: boolean = false, isCheck: boolean = false) {
+  if (san.includes('#')) {
+    chessAudio.playMate();
+  } else if (isCheck || san.includes('+')) {
+    chessAudio.playCheck();
+  } else if (isCapture || san.includes('x')) {
+    chessAudio.playCapture();
+  } else {
+    chessAudio.playMove();
+  }
+}

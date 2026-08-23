@@ -8,6 +8,7 @@ interface ChessBoardProps {
   onMove?: (from: string, to: string) => void;
   lastMove?: { from: string; to: string } | null;
   hintSquare?: string | null;
+  highlightMove?: { from: string; to: string; color?: 'white' | 'black' } | null;
   interactive?: boolean;
   boardTheme?: 'wood' | 'green' | 'blue' | 'classic';
   showCoordinates?: boolean;
@@ -20,6 +21,7 @@ export const ChessBoard: React.FC<ChessBoardProps> = ({
   onMove,
   lastMove,
   hintSquare,
+  highlightMove,
   interactive = true,
   boardTheme = 'classic',
   showCoordinates = true,
@@ -172,6 +174,9 @@ export const ChessBoard: React.FC<ChessBoardProps> = ({
             const isLastMoveTo = lastMove?.to === squareName;
             const isHint = hintSquare === squareName;
             const isKingInCheck = checkKingSquare === squareName;
+            const isHighlightFrom = highlightMove?.from === squareName;
+            const isHighlightTo = highlightMove?.to === squareName;
+            const highlightColor = highlightMove?.color === 'black' ? 'violet' : 'cyan';
 
             return (
               <div
@@ -184,6 +189,8 @@ export const ChessBoard: React.FC<ChessBoardProps> = ({
                   relative aspect-square flex items-center justify-center cursor-pointer transition-colors duration-150
                   ${isLight ? themeConfig.light : themeConfig.dark}
                   ${isLastMoveFrom || isLastMoveTo ? 'bg-amber-300/60 ring-inset ring-2 ring-amber-400' : ''}
+                  ${isHighlightFrom ? (highlightColor === 'violet' ? 'bg-purple-400/60 ring-inset ring-4 ring-purple-500 z-10' : 'bg-cyan-400/60 ring-inset ring-4 ring-cyan-500 z-10') : ''}
+                  ${isHighlightTo ? (highlightColor === 'violet' ? 'bg-purple-300/70 ring-inset ring-4 ring-purple-600 animate-pulse z-10' : 'bg-cyan-300/70 ring-inset ring-4 ring-cyan-600 animate-pulse z-10') : ''}
                   ${isSelected ? 'bg-amber-400/80 ring-4 ring-inset ring-amber-500 z-10' : ''}
                   ${isHint ? 'bg-emerald-400/70 animate-pulse ring-4 ring-emerald-500 z-10' : ''}
                   ${isKingInCheck ? 'bg-rose-500/80 ring-4 ring-rose-600 animate-bounce' : ''}
