@@ -25,10 +25,11 @@ import { PDFExportModal } from './components/PDFExportModal';
 import { SoloSelfPlayTraining } from './components/SoloSelfPlayTraining';
 import { VsAIMode } from './components/VsAIMode';
 import { TournamentMode } from './components/TournamentMode';
+import { AdventureMode } from './components/AdventureMode';
 
 export default function App() {
   // Navigation
-  const [activeTab, setActiveTab] = useState<AppTab>('vs-ai');
+  const [activeTab, setActiveTab] = useState<AppTab>('adventure');
 
   // Puzzles and active index
   const [puzzles, setPuzzles] = useState<Puzzle[]>(COMPREHENSIVE_PUZZLES);
@@ -209,6 +210,14 @@ export default function App() {
 
       {/* Main Container */}
       <main className="flex-1 max-w-7xl mx-auto w-full px-2.5 sm:px-4 lg:px-6 py-2.5 sm:py-4 flex flex-col gap-3 sm:gap-4">
+        {/* TAB -1: MODO AVENTURA RPG */}
+        {activeTab === 'adventure' && (
+          <AdventureMode
+            boardTheme="classic"
+            notationFormat={notationFormat}
+          />
+        )}
+
         {/* TAB 0: MODO VS IA CON NIVELES */}
         {activeTab === 'vs-ai' && (
           <VsAIMode

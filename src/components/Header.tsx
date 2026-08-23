@@ -14,10 +14,12 @@ import {
   Share2,
   Check,
   Bot,
-  Swords
+  Swords,
+  Compass,
+  Map
 } from 'lucide-react';
 
-export type AppTab = 'vs-ai' | 'tournament' | 'selfplay' | 'player' | 'training' | 'library';
+export type AppTab = 'adventure' | 'vs-ai' | 'tournament' | 'selfplay' | 'player' | 'training' | 'library';
 
 interface HeaderProps {
   activeTab: AppTab;
@@ -102,6 +104,20 @@ export const Header: React.FC<HeaderProps> = ({
 
           {/* Navigation Tabs - Bento Pill Style */}
           <nav className="flex items-center p-1 bg-slate-100/90 dark:bg-slate-900/90 border border-slate-200/80 dark:border-slate-800/80 rounded-2xl overflow-x-auto max-w-[50vw] sm:max-w-none scrollbar-none">
+            {/* MODO AVENTURA TAB */}
+            <button
+              id="nav-tab-adventure"
+              onClick={() => setActiveTab('adventure')}
+              className={`px-3 py-1.5 rounded-xl text-xs font-bold flex items-center gap-1.5 transition-all duration-200 cursor-pointer whitespace-nowrap ${
+                activeTab === 'adventure'
+                  ? 'bg-white dark:bg-slate-800 text-rose-600 dark:text-rose-400 shadow-sm border border-slate-200/60 dark:border-slate-700/60'
+                  : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200'
+              }`}
+            >
+              <Compass className="w-3.5 h-3.5 text-rose-500" />
+              <span>Aventura</span>
+            </button>
+
             {/* VS IA TAB */}
             <button
               id="nav-tab-vs-ai"

@@ -1,6 +1,6 @@
 {
   "name": "Ajedrez Táctico - Generador de Jaque Mate",
-  "description": "Plataforma integral de ajedrez con modo Vs IA (12 niveles y bots con personalidades), torneos eliminatorios y ligas vs bots, generador de jaque mate en 2, 3 y 4 jugadas, auto-juego guiado con tutor IA dual, análisis permanente con Stockfish UCI y exportación a PDF.",
+  "description": "Plataforma integral de ajedrez con Modo Aventura RPG (6 mundos, 30 etapas, jefes finales, reliquias y talentos), modo Vs IA (12 niveles y bots con personalidades), torneos eliminatorios y ligas vs bots, generador de jaque mate en 2, 3 y 4 jugadas, auto-juego guiado con tutor IA dual, análisis permanente con Stockfish UCI y exportación a PDF.",
   "requestFramePermissions": [],
   "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
 }
