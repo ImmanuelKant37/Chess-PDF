@@ -153,6 +153,20 @@ export interface StockfishState {
   error: string | null;
 }
 
+export type StockfishOptimizationMode = 'ultra_fast' | 'balanced' | 'master' | 'custom';
+
+export interface StockfishOptimizationSettings {
+  mode: StockfishOptimizationMode;
+  maxDepth: number; // 6 to 25
+  moveTimeMs: number; // 0 for unlimited, or 100 to 5000 ms
+  multiPV: number; // 1 to 4
+  hashMb: number; // 16, 32, 64, 128
+  threads: number; // 1, 2, 4
+  fastHintAnalysis: boolean; // prioritize instant response for hint calculations
+  autoAnalyzeStockfish: boolean; // automatically start continuous analysis
+  evaluationThrottleMs: number; // UI update throttling in ms (50, 100, 200)
+}
+
 export interface PresetPosition {
   id: string;
   title: string;

@@ -26,10 +26,15 @@ import { SoloSelfPlayTraining } from './components/SoloSelfPlayTraining';
 import { VsAIMode } from './components/VsAIMode';
 import { TournamentMode } from './components/TournamentMode';
 import { AdventureMode } from './components/AdventureMode';
+import { FloatingFullscreenButton } from './components/FloatingFullscreenButton';
+import { SettingsModal } from './components/SettingsModal';
 
 export default function App() {
   // Navigation
   const [activeTab, setActiveTab] = useState<AppTab>('adventure');
+
+  // Settings Modal State
+  const [isSettingsModalOpen, setIsSettingsModalOpen] = useState<boolean>(false);
 
   // Puzzles and active index
   const [puzzles, setPuzzles] = useState<Puzzle[]>(COMPREHENSIVE_PUZZLES);
@@ -196,6 +201,7 @@ export default function App() {
         activeTab={activeTab}
         setActiveTab={setActiveTab}
         onOpenPDF={() => handleOpenPDFWithPuzzles(COMPREHENSIVE_PUZZLES, 'Cuaderno de Táctica de Ajedrez')}
+        onOpenSettings={() => setIsSettingsModalOpen(true)}
         stats={{
           solvedCount: totalSolvedCount,
           streak: currentStreak,
@@ -373,6 +379,19 @@ export default function App() {
         puzzles={puzzlesToExport}
         defaultTitle={exportTitle}
       />
+
+      {/* Settings & Optimization Modal */}
+      <SettingsModal
+        isOpen={isSettingsModalOpen}
+        onClose={() => setIsSettingsModalOpen(false)}
+        notationFormat={notationFormat}
+        setNotationFormat={setNotationFormat}
+        darkMode={darkMode}
+        setDarkMode={setDarkMode}
+      />
+
+      {/* Global Floating Fullscreen Button */}
+      <FloatingFullscreenButton />
     </div>
   );
 }

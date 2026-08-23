@@ -19,6 +19,7 @@ import { Puzzle, TacticalTheme, TrainingSessionConfig, TrainingResult, MateDepth
 import { TACTICAL_THEMES } from '../data/puzzles';
 import { COMPREHENSIVE_PUZZLES } from '../data/puzzleDatabase';
 import { PuzzlePlayer } from './PuzzlePlayer';
+import { FloatingHintWidget } from './FloatingHintWidget';
 
 interface TrainingModeProps {
   onExportPDF: (puzzlesToExport: Puzzle[], sessionTitle?: string) => void;
@@ -520,6 +521,13 @@ export const TrainingMode: React.FC<TrainingModeProps> = ({
         onPrevPuzzle={currentIndex > 0 ? () => setCurrentIndex(prev => prev - 1) : undefined}
         onToggleFavorite={onToggleFavorite}
         isFavorite={favorites.includes(currentPuzzle.id)}
+        notationFormat={notationFormat}
+      />
+
+      {/* Floating Tactical Hint Widget for Training Mode */}
+      <FloatingHintWidget
+        key={`hint-widget-${currentPuzzle.id}`}
+        puzzle={currentPuzzle}
         notationFormat={notationFormat}
       />
     </div>

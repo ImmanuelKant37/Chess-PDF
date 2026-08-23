@@ -24,6 +24,11 @@ class ChessSoundSystem {
     return this.isMuted;
   }
 
+  public toggleMute(): boolean {
+    this.isMuted = !this.isMuted;
+    return this.isMuted;
+  }
+
   // Standard move "tok" sound
   public playMove() {
     if (this.isMuted) return;

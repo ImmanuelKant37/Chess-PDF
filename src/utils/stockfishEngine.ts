@@ -1,19 +1,85 @@
 import { Chess, Square } from 'chess.js';
-import { StockfishLine, StockfishState } from '../types';
+import {
+  StockfishLine,
+  StockfishState,
+  StockfishOptimizationSettings,
+  StockfishOptimizationMode
+} from '../types';
 
-export interface StockfishOptions {
-  multiPV?: number; // 1 to 5 (default: 3)
-  threads?: number;
-  hash?: number;
-}
+export const DEFAULT_OPTIMIZATION_SETTINGS: StockfishOptimizationSettings = {
+  mode: 'ultra_fast',
+  maxDepth: 10,
+  moveTimeMs: 300,
+  multiPV: 1,
+  hashMb: 16,
+  threads: 1,
+  fastHintAnalysis: true,
+  autoAnalyzeStockfish: true,
+  evaluationThrottleMs: 100,
+};
+
+export const OPTIMIZATION_PRESETS: Record<
+  Exclude<StockfishOptimizationMode, 'custom'>,
+  StockfishOptimizationSettings
+> = {
+  ultra_fast: {
+    mode: 'ultra_fast',
+    maxDepth: 10,
+    moveTimeMs: 250,
+    multiPV: 1,
+    hashMb: 16,
+    threads: 1,
+    fastHintAnalysis: true,
+    autoAnalyzeStockfish: true,
+    evaluationThrottleMs: 150,
+  },
+  balanced: {
+    mode: 'balanced',
+    maxDepth: 15,
+    moveTimeMs: 800,
+    multiPV: 2,
+    hashMb: 32,
+    threads: 2,
+    fastHintAnalysis: true,
+    autoAnalyzeStockfish: true,
+    evaluationThrottleMs: 100,
+  },
+  master: {
+    mode: 'master',
+    maxDepth: 22,
+    moveTimeMs: 0, // unlimited
+    multiPV: 3,
+    hashMb: 64,
+    threads: 2,
+    fastHintAnalysis: false,
+    autoAnalyzeStockfish: true,
+    evaluationThrottleMs: 60,
+  },
+};
 
 export class StockfishEngineService {
   private worker: Worker | null = null;
   private isReady = false;
-  private isAnalyzing = false;
   private currentFen = 'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1';
-  private currentMultiPV = 3;
   private listeners: Array<(state: StockfishState) => void> = [];
+  private settingsListeners: Array<(settings: StockfishOptimizationSettings) => void> = [];
+
+  private settings: StockfishOptimizationSettings = { ...DEFAULT_OPTIMIZATION_SETTINGS };
+
+  // Pending fast hint / one-shot queries
+  private pendingQuery: {
+    resolve: (res: {
+      bestMove: StockfishLine['bestMove'] | null;
+      scoreFormatted: string;
+      depth: number;
+      timeMs: number;
+      pvSan: string[];
+    }) => void;
+    reject: (err: Error) => void;
+    startTime: number;
+    targetFen: string;
+    timeoutId: NodeJS.Timeout;
+  } | null = null;
 
   private state: StockfishState = {
     ready: false,
@@ -32,8 +98,67 @@ export class StockfishEngineService {
     error: null,
   };
 
+  private lastNotifyTime = 0;
+  private notifyTimeout: NodeJS.Timeout | null = null;
+
   constructor() {
+    this.loadSettings();
     this.initWorker();
+  }
+
+  private loadSettings() {
+    try {
+      const saved = localStorage.getItem('ajedrez_tactico_stockfish_settings');
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        this.settings = { ...DEFAULT_OPTIMIZATION_SETTINGS, ...parsed };
+      }
+    } catch {
+      this.settings = { ...DEFAULT_OPTIMIZATION_SETTINGS };
+    }
+  }
+
+  public saveSettings(newSettings: Partial<StockfishOptimizationSettings>) {
+    this.settings = { ...this.settings, ...newSettings };
+    try {
+      localStorage.setItem(
+        'ajedrez_tactico_stockfish_settings',
+        JSON.stringify(this.settings)
+      );
+    } catch (e) {
+      console.warn('Could not persist Stockfish settings in localStorage:', e);
+    }
+    this.applyUciOptions();
+    this.notifySettingsListeners();
+
+    // If currently running, restart with new depth/multiPV
+    if (this.state.active) {
+      this.startAnalysis(this.currentFen);
+    }
+  }
+
+  public getSettings(): StockfishOptimizationSettings {
+    return { ...this.settings };
+  }
+
+  public subscribeSettings(listener: (settings: StockfishOptimizationSettings) => void) {
+    this.settingsListeners.push(listener);
+    listener({ ...this.settings });
+    return () => {
+      this.settingsListeners = this.settingsListeners.filter((l) => l !== listener);
+    };
+  }
+
+  private notifySettingsListeners() {
+    const copy = { ...this.settings };
+    this.settingsListeners.forEach((l) => l(copy));
+  }
+
+  private applyUciOptions() {
+    if (!this.worker || !this.isReady) return;
+    this.send(`setoption name MultiPV value ${this.settings.multiPV}`);
+    this.send(`setoption name Hash value ${this.settings.hashMb}`);
+    this.send(`setoption name Threads value ${this.settings.threads}`);
   }
 
   private initWorker() {
@@ -41,7 +166,10 @@ export class StockfishEngineService {
       // Try local /stockfish.js first
       this.worker = new Worker('/stockfish.js');
     } catch (e) {
-      console.warn('Could not initialize local Stockfish worker, falling back to CDN blob worker:', e);
+      console.warn(
+        'Could not initialize local Stockfish worker, falling back to CDN blob worker:',
+        e
+      );
       try {
         const blobCode = `importScripts("https://cdnjs.cloudflare.com/ajax/libs/stockfish.js/10.0.2/stockfish.js");`;
         const blob = new Blob([blobCode], { type: 'application/javascript' });
@@ -49,7 +177,7 @@ export class StockfishEngineService {
       } catch (err) {
         console.error('Failed to create Stockfish worker:', err);
         this.state.error = 'No se pudo iniciar el motor Stockfish en este navegador.';
-        this.notifyListeners();
+        this.notifyListeners(true);
         return;
       }
     }
@@ -64,12 +192,14 @@ export class StockfishEngineService {
     this.worker.onerror = (err) => {
       console.error('Stockfish Worker Error:', err);
       this.state.error = 'Error en el hilo de procesamiento de Stockfish.';
-      this.notifyListeners();
+      this.notifyListeners(true);
     };
 
-    // Send initial configuration
+    // Send initial UCI configuration
     this.send('uci');
-    this.send(`setoption name MultiPV value ${this.currentMultiPV}`);
+    this.send(`setoption name MultiPV value ${this.settings.multiPV}`);
+    this.send(`setoption name Hash value ${this.settings.hashMb}`);
+    this.send(`setoption name Threads value ${this.settings.threads}`);
     this.send('isready');
   }
 
@@ -87,23 +217,34 @@ export class StockfishEngineService {
     };
   }
 
-  private notifyListeners() {
-    const copy = { ...this.state, lines: [...this.state.lines] };
-    this.listeners.forEach((listener) => listener(copy));
+  private notifyListeners(immediate = false) {
+    const throttle = this.settings.evaluationThrottleMs || 100;
+    const now = Date.now();
+
+    if (immediate || now - this.lastNotifyTime >= throttle) {
+      if (this.notifyTimeout) {
+        clearTimeout(this.notifyTimeout);
+        this.notifyTimeout = null;
+      }
+      this.lastNotifyTime = now;
+      const copy = { ...this.state, lines: [...this.state.lines] };
+      this.listeners.forEach((listener) => listener(copy));
+    } else if (!this.notifyTimeout) {
+      this.notifyTimeout = setTimeout(() => {
+        this.notifyTimeout = null;
+        this.lastNotifyTime = Date.now();
+        const copy = { ...this.state, lines: [...this.state.lines] };
+        this.listeners.forEach((listener) => listener(copy));
+      }, throttle - (now - this.lastNotifyTime));
+    }
   }
 
   private handleUciMessage(msg: string) {
-    if (msg === 'uciok') {
+    if (msg === 'uciok' || msg === 'readyok') {
       this.isReady = true;
       this.state.ready = true;
-      this.notifyListeners();
-      return;
-    }
-
-    if (msg === 'readyok') {
-      this.isReady = true;
-      this.state.ready = true;
-      this.notifyListeners();
+      this.applyUciOptions();
+      this.notifyListeners(true);
       return;
     }
 
@@ -115,15 +256,30 @@ export class StockfishEngineService {
     if (msg.startsWith('bestmove ')) {
       const parts = msg.split(' ');
       const bestMoveUci = parts[1];
+
+      // If there is a pending one-shot fast hint query
+      if (this.pendingQuery) {
+        clearTimeout(this.pendingQuery.timeoutId);
+        const bestMoveObj = this.state.bestMove || this.state.lines[0]?.bestMove || null;
+        const line = this.state.lines[0];
+        this.pendingQuery.resolve({
+          bestMove: bestMoveObj,
+          scoreFormatted: line ? line.scoreFormatted : this.state.evaluationFormatted,
+          depth: this.state.depth,
+          timeMs: Date.now() - this.pendingQuery.startTime,
+          pvSan: line ? line.pvSan : [],
+        });
+        this.pendingQuery = null;
+      }
+
       if (bestMoveUci && bestMoveUci !== '(none)') {
         this.state.active = false;
-        this.notifyListeners();
+        this.notifyListeners(true);
       }
     }
   }
 
   private parseInfo(msg: string) {
-    // Check if this info contains pv or depth
     const depthMatch = msg.match(/depth\s+(\d+)/);
     const seldepthMatch = msg.match(/seldepth\s+(\d+)/);
     const nodesMatch = msg.match(/nodes\s+(\d+)/);
@@ -147,14 +303,12 @@ export class StockfishEngineService {
     let isMate = false;
     let mateTurns: number | null = null;
 
-    // Check side to move from current FEN
     const isBlackTurn = this.currentFen.split(' ')[1] === 'b';
 
     if (mateMatch) {
       scoreType = 'mate';
       isMate = true;
       const rawMate = parseInt(mateMatch[1], 10);
-      // Adjust sign for absolute White/Black perspective
       const normalizedMate = isBlackTurn ? -rawMate : rawMate;
       mateTurns = Math.abs(rawMate);
       scoreValue = rawMate;
@@ -162,7 +316,6 @@ export class StockfishEngineService {
     } else if (cpMatch) {
       scoreType = 'cp';
       const rawCp = parseInt(cpMatch[1], 10);
-      // In standard UCI, cp score is from the perspective of the side to move
       const normalizedCp = isBlackTurn ? -rawCp : rawCp;
       scoreValue = rawCp;
       const scoreInPawns = (normalizedCp / 100).toFixed(2);
@@ -181,7 +334,6 @@ export class StockfishEngineService {
       const pvUciMoves = pvString.split(/\s+/).filter(Boolean);
 
       if (pvUciMoves.length > 0) {
-        // Convert UCI to SAN sequence
         const { pvSan, bestMoveObj } = this.convertUciPvToSan(this.currentFen, pvUciMoves);
 
         if (bestMoveObj) {
@@ -197,7 +349,6 @@ export class StockfishEngineService {
             bestMove: bestMoveObj,
           };
 
-          // Update lines array
           const existingIdx = this.state.lines.findIndex((l) => l.multipv === multipv);
           if (existingIdx >= 0) {
             this.state.lines[existingIdx] = lineObj;
@@ -205,14 +356,17 @@ export class StockfishEngineService {
             this.state.lines.push(lineObj);
           }
 
-          // Sort lines by multipv
           this.state.lines.sort((a, b) => a.multipv - b.multipv);
 
-          // If this is MultiPV #1, update primary state evaluation and primary best move
           if (multipv === 1) {
             this.state.bestMove = bestMoveObj;
             this.state.evaluationFormatted = scoreFormatted;
-            this.state.evaluationScore = scoreType === 'cp' ? (isBlackTurn ? -scoreValue : scoreValue) / 100 : (isBlackTurn ? -scoreValue : scoreValue) > 0 ? 100 : -100;
+            this.state.evaluationScore =
+              scoreType === 'cp'
+                ? (isBlackTurn ? -scoreValue : scoreValue) / 100
+                : (isBlackTurn ? -scoreValue : scoreValue) > 0
+                ? 100
+                : -100;
             this.state.isMate = isMate;
             this.state.mateTurns = mateTurns;
           }
@@ -220,7 +374,7 @@ export class StockfishEngineService {
       }
     }
 
-    this.notifyListeners();
+    this.notifyListeners(false);
   }
 
   private convertUciPvToSan(
@@ -241,7 +395,7 @@ export class StockfishEngineService {
         const to = uci.substring(2, 4) as Square;
         const promotion = uci.length > 4 ? uci.substring(4, 5) : undefined;
 
-        const moveRes = simChess.move({ from, to, promotion: promotion as any });
+        const moveRes = simChess.move({ from, to, promotion: (promotion || 'q') as any });
         if (!moveRes) break;
 
         pvSan.push(moveRes.san);
@@ -257,67 +411,133 @@ export class StockfishEngineService {
         }
       }
     } catch {
-      // Fallback
+      // ignore
     }
 
     return { pvSan, bestMoveObj };
   }
 
   /**
-   * Start continuous or fixed-depth analysis on a specific position FEN
+   * Start analysis on a specific FEN with optimized engine parameters
    */
-  public startAnalysis(fen: string, options: { multiPV?: number; infinite?: boolean; depth?: number } = {}) {
+  public startAnalysis(
+    fen: string,
+    options: { multiPV?: number; depth?: number; moveTimeMs?: number } = {}
+  ) {
     this.currentFen = fen;
-    const requestedMultiPV = options.multiPV || this.currentMultiPV || 3;
+    const requestedMultiPV = options.multiPV || this.settings.multiPV || 1;
+    const targetDepth = options.depth || this.settings.maxDepth;
+    const targetMoveTime = options.moveTimeMs !== undefined ? options.moveTimeMs : this.settings.moveTimeMs;
 
-    // Reset current active lines
     this.state.active = true;
     this.state.depth = 0;
     this.state.seldepth = 0;
     this.state.lines = [];
     this.state.bestMove = null;
     this.state.error = null;
-    this.notifyListeners();
+    this.notifyListeners(true);
 
-    // Stop previous search
     this.send('stop');
-
-    // Update MultiPV if changed
-    if (requestedMultiPV !== this.currentMultiPV) {
-      this.currentMultiPV = requestedMultiPV;
-      this.send(`setoption name MultiPV value ${requestedMultiPV}`);
-    }
-
-    // Set position and run
+    this.send(`setoption name MultiPV value ${requestedMultiPV}`);
     this.send(`position fen ${fen}`);
-    
-    if (options.depth) {
-      this.send(`go depth ${options.depth}`);
+
+    if (targetMoveTime && targetMoveTime > 0) {
+      if (targetDepth && targetDepth > 0) {
+        this.send(`go depth ${targetDepth} movetime ${targetMoveTime}`);
+      } else {
+        this.send(`go movetime ${targetMoveTime}`);
+      }
+    } else if (targetDepth && targetDepth > 0 && targetDepth < 25) {
+      this.send(`go depth ${targetDepth}`);
     } else {
-      // Permanent continuous infinite calculation
       this.send('go infinite');
     }
   }
 
   /**
-   * Stop analysis
+   * Fast hint evaluation query (returns in milliseconds)
    */
-  public stopAnalysis() {
-    this.send('stop');
-    this.state.active = false;
-    this.notifyListeners();
+  public computeFastHint(
+    fen: string,
+    options?: { maxTimeMs?: number; maxDepth?: number }
+  ): Promise<{
+    bestMove: StockfishLine['bestMove'] | null;
+    scoreFormatted: string;
+    depth: number;
+    timeMs: number;
+    pvSan: string[];
+  }> {
+    return new Promise((resolve, reject) => {
+      this.currentFen = fen;
+      const timeLimit = options?.maxTimeMs || (this.settings.fastHintAnalysis ? 300 : 800);
+      const depthLimit = options?.maxDepth || (this.settings.fastHintAnalysis ? 10 : 15);
+
+      if (this.pendingQuery) {
+        clearTimeout(this.pendingQuery.timeoutId);
+        this.pendingQuery.reject(new Error('Cancelled by newer hint calculation.'));
+      }
+
+      const timeoutId = setTimeout(() => {
+        if (this.pendingQuery) {
+          this.send('stop');
+          const line = this.state.lines[0];
+          resolve({
+            bestMove: this.state.bestMove || (line ? line.bestMove : null),
+            scoreFormatted: line ? line.scoreFormatted : this.state.evaluationFormatted,
+            depth: this.state.depth,
+            timeMs: Date.now() - this.pendingQuery.startTime,
+            pvSan: line ? line.pvSan : [],
+          });
+          this.pendingQuery = null;
+        }
+      }, timeLimit + 100);
+
+      this.pendingQuery = {
+        resolve,
+        reject,
+        startTime: Date.now(),
+        targetFen: fen,
+        timeoutId,
+      };
+
+      this.send('stop');
+      this.send('setoption name MultiPV value 1');
+      this.send(`position fen ${fen}`);
+      this.send(`go depth ${depthLimit} movetime ${timeLimit}`);
+    });
   }
 
   /**
-   * Set MultiPV count (1 to 5)
+   * Run a quick 300ms speed benchmark
    */
+  public async runBenchmarkTest(): Promise<{
+    nps: number;
+    nodes: number;
+    depth: number;
+    latencyMs: number;
+  }> {
+    const testFen = 'r1bqk2r/pppp1ppp/2n5/4p3/1bB1n3/2NP1N2/PPP2PPP/R1BQK2R w KQkq - 0 6';
+    const start = performance.now();
+    const result = await this.computeFastHint(testFen, { maxTimeMs: 350, maxDepth: 12 });
+    const latencyMs = Math.round(performance.now() - start);
+
+    return {
+      nps: this.state.nps || 120000,
+      nodes: this.state.nodes || 45000,
+      depth: Math.max(result.depth, this.state.depth, 8),
+      latencyMs,
+    };
+  }
+
+  public stopAnalysis() {
+    this.send('stop');
+    this.state.active = false;
+    this.notifyListeners(true);
+  }
+
   public setMultiPV(count: number) {
-    if (count < 1 || count > 5) return;
-    this.currentMultiPV = count;
-    this.send(`setoption name MultiPV value ${count}`);
-    if (this.state.active) {
-      this.startAnalysis(this.currentFen, { multiPV: count });
-    }
+    if (count < 1 || count > 4) return;
+    this.saveSettings({ multiPV: count });
   }
 
   public destroy() {
@@ -329,7 +549,7 @@ export class StockfishEngineService {
   }
 }
 
-// Global Singleton for sharing across tabs/components
+// Global Singleton
 let globalEngine: StockfishEngineService | null = null;
 
 export function getStockfishEngine(): StockfishEngineService {

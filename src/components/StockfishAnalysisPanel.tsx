@@ -22,9 +22,20 @@ import {
   Lightbulb,
   ShieldAlert,
   Flame,
+  Sliders,
+  Settings
 } from 'lucide-react';
-import { getStockfishEngine } from '../utils/stockfishEngine';
-import { StockfishLine, StockfishState, MoveAIExplanation } from '../types';
+import {
+  getStockfishEngine,
+  OPTIMIZATION_PRESETS
+} from '../utils/stockfishEngine';
+import {
+  StockfishLine,
+  StockfishState,
+  MoveAIExplanation,
+  StockfishOptimizationSettings,
+  StockfishOptimizationMode
+} from '../types';
 import { convertSanToSpanish, convertSanToFigurine } from '../utils/notation';
 
 interface StockfishAnalysisPanelProps {
@@ -37,6 +48,7 @@ interface StockfishAnalysisPanelProps {
   showArrow: boolean;
   setShowArrow: (show: boolean) => void;
   history?: string[];
+  onOpenSettings?: () => void;
 }
 
 export const StockfishAnalysisPanel: React.FC<StockfishAnalysisPanelProps> = ({
@@ -49,10 +61,14 @@ export const StockfishAnalysisPanel: React.FC<StockfishAnalysisPanelProps> = ({
   showArrow,
   setShowArrow,
   history = [],
+  onOpenSettings,
 }) => {
   const [engineState, setEngineState] = useState<StockfishState>(() => getStockfishEngine()['state']);
+  const [engineSettings, setEngineSettings] = useState<StockfishOptimizationSettings>(() =>
+    getStockfishEngine().getSettings()
+  );
   const [isPermanentActive, setIsPermanentActive] = useState<boolean>(true);
-  const [multiPV, setMultiPV] = useState<number>(3);
+  const [multiPV, setMultiPV] = useState<number>(() => getStockfishEngine().getSettings().multiPV || 1);
 
   // State for AI move explanations: key is line multipv index
   const [explanations, setExplanations] = useState<Record<number, MoveAIExplanation>>({});
@@ -70,15 +86,20 @@ export const StockfishAnalysisPanel: React.FC<StockfishAnalysisPanelProps> = ({
     }
   }, [fen]);
 
-  // Subscribe to Stockfish engine updates
+  // Subscribe to Stockfish engine updates & settings
   useEffect(() => {
     const engine = getStockfishEngine();
     const unsubscribe = engine.subscribe((state) => {
       setEngineState(state);
     });
+    const unsubscribeSettings = engine.subscribeSettings((settings) => {
+      setEngineSettings(settings);
+      setMultiPV(settings.multiPV);
+    });
 
     return () => {
       unsubscribe();
+      unsubscribeSettings();
     };
   }, []);
 
@@ -107,6 +128,14 @@ export const StockfishAnalysisPanel: React.FC<StockfishAnalysisPanelProps> = ({
     setMultiPV(newCount);
     const engine = getStockfishEngine();
     engine.setMultiPV(newCount);
+  };
+
+  const handleQuickModeChange = (mode: StockfishOptimizationMode) => {
+    const engine = getStockfishEngine();
+    if (mode !== 'custom') {
+      const preset = OPTIMIZATION_PRESETS[mode];
+      engine.saveSettings(preset);
+    }
   };
 
   // Fetch AI explanation for a specific Stockfish line
@@ -260,7 +289,61 @@ export const StockfishAnalysisPanel: React.FC<StockfishAnalysisPanelProps> = ({
         </div>
 
         {/* Master Toggle and Arrow switch */}
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 flex-wrap">
+          {/* Quick Optimization Mode Switcher */}
+          <div className="hidden sm:flex items-center gap-1 bg-slate-100 dark:bg-slate-900/90 p-1 rounded-xl border border-slate-200 dark:border-slate-800 text-xs">
+            <button
+              onClick={() => handleQuickModeChange('ultra_fast')}
+              className={`px-2 py-1 rounded-lg text-[11px] font-black flex items-center gap-1 transition ${
+                engineSettings.mode === 'ultra_fast'
+                  ? 'bg-amber-500 text-white shadow-xs'
+                  : 'text-slate-500 hover:text-slate-900 dark:hover:text-white'
+              }`}
+              title="Modo Turbo: Respuesta instantánea para pistas (<250ms)"
+            >
+              <Zap className="w-3 h-3" />
+              <span>Turbo</span>
+            </button>
+
+            <button
+              onClick={() => handleQuickModeChange('balanced')}
+              className={`px-2 py-1 rounded-lg text-[11px] font-black flex items-center gap-1 transition ${
+                engineSettings.mode === 'balanced'
+                  ? 'bg-indigo-600 text-white shadow-xs'
+                  : 'text-slate-500 hover:text-slate-900 dark:hover:text-white'
+              }`}
+              title="Modo Equilibrado: Óptimo balance entre velocidad y profundidad"
+            >
+              <Gauge className="w-3 h-3" />
+              <span>Equilibrado</span>
+            </button>
+
+            <button
+              onClick={() => handleQuickModeChange('master')}
+              className={`px-2 py-1 rounded-lg text-[11px] font-black flex items-center gap-1 transition ${
+                engineSettings.mode === 'master'
+                  ? 'bg-emerald-600 text-white shadow-xs'
+                  : 'text-slate-500 hover:text-slate-900 dark:hover:text-white'
+              }`}
+              title="Modo Gran Maestro: Máxima profundidad y variantes"
+            >
+              <Cpu className="w-3 h-3" />
+              <span>Maestro</span>
+            </button>
+          </div>
+
+          {/* Open Settings Modal Button */}
+          {onOpenSettings && (
+            <button
+              id="btn-stockfish-panel-open-settings"
+              onClick={onOpenSettings}
+              title="Ajustar parámetros de Stockfish"
+              className="p-2 rounded-xl bg-slate-100 dark:bg-slate-900 hover:bg-slate-200 dark:hover:bg-slate-800 text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-slate-800 transition"
+            >
+              <Sliders className="w-4 h-4" />
+            </button>
+          )}
+
           {/* Arrow Toggle */}
           <button
             id="btn-toggle-stockfish-arrow"
