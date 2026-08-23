@@ -9,6 +9,8 @@ interface ChessBoardProps {
   lastMove?: { from: string; to: string } | null;
   hintSquare?: string | null;
   highlightMove?: { from: string; to: string; color?: 'white' | 'black' } | null;
+  stockfishBestMove?: { from: string; to: string } | null;
+  showStockfishArrow?: boolean;
   interactive?: boolean;
   boardTheme?: 'wood' | 'green' | 'blue' | 'classic';
   showCoordinates?: boolean;
@@ -22,6 +24,8 @@ export const ChessBoard: React.FC<ChessBoardProps> = ({
   lastMove,
   hintSquare,
   highlightMove,
+  stockfishBestMove,
+  showStockfishArrow = true,
   interactive = true,
   boardTheme = 'classic',
   showCoordinates = true,
@@ -156,11 +160,29 @@ export const ChessBoard: React.FC<ChessBoardProps> = ({
     setPossibleMoves([]);
   };
 
+  const getSquareCoordinates = (sq: string) => {
+    if (!sq || sq.length < 2) return null;
+    const file = sq[0];
+    const rank = parseInt(sq[1], 10);
+    const colIdx = orientation === 'w' ? file.charCodeAt(0) - 'a'.charCodeAt(0) : 'h'.charCodeAt(0) - file.charCodeAt(0);
+    const rowIdx = orientation === 'w' ? 8 - rank : rank - 1;
+    const x = (colIdx + 0.5) * 12.5;
+    const y = (rowIdx + 0.5) * 12.5;
+    return { x, y };
+  };
+
+  const arrowCoords = stockfishBestMove && showStockfishArrow
+    ? {
+        from: getSquareCoordinates(stockfishBestMove.from),
+        to: getSquareCoordinates(stockfishBestMove.to),
+      }
+    : null;
+
   return (
-    <div className="relative inline-block select-none shadow-2xl rounded-2xl overflow-hidden border-4 border-slate-700/80 bg-slate-800">
+    <div className="relative w-full max-w-[520px] aspect-square select-none shadow-xl sm:shadow-2xl rounded-xl sm:rounded-2xl overflow-hidden border-2 sm:border-4 border-slate-700/80 bg-slate-800 touch-manipulation mx-auto flex items-center justify-center">
       <div 
         id="chess-board-grid"
-        className="grid grid-cols-8 aspect-square w-full max-w-[540px] sm:w-[460px] md:w-[500px] lg:w-[530px]"
+        className="grid grid-cols-8 aspect-square w-full h-full relative touch-manipulation"
       >
         {ranks.map((rank, rankIdx) => {
           return files.map((file, fileIdx) => {
@@ -178,6 +200,9 @@ export const ChessBoard: React.FC<ChessBoardProps> = ({
             const isHighlightTo = highlightMove?.to === squareName;
             const highlightColor = highlightMove?.color === 'black' ? 'violet' : 'cyan';
 
+            const isStockfishFrom = stockfishBestMove?.from === squareName;
+            const isStockfishTo = stockfishBestMove?.to === squareName;
+
             return (
               <div
                 key={squareName}
@@ -191,6 +216,8 @@ export const ChessBoard: React.FC<ChessBoardProps> = ({
                   ${isLastMoveFrom || isLastMoveTo ? 'bg-amber-300/60 ring-inset ring-2 ring-amber-400' : ''}
                   ${isHighlightFrom ? (highlightColor === 'violet' ? 'bg-purple-400/60 ring-inset ring-4 ring-purple-500 z-10' : 'bg-cyan-400/60 ring-inset ring-4 ring-cyan-500 z-10') : ''}
                   ${isHighlightTo ? (highlightColor === 'violet' ? 'bg-purple-300/70 ring-inset ring-4 ring-purple-600 animate-pulse z-10' : 'bg-cyan-300/70 ring-inset ring-4 ring-cyan-600 animate-pulse z-10') : ''}
+                  ${isStockfishFrom ? 'bg-emerald-400/50 ring-inset ring-2 ring-emerald-500 z-10' : ''}
+                  ${isStockfishTo ? 'bg-emerald-300/60 ring-inset ring-4 ring-emerald-600 animate-pulse z-10' : ''}
                   ${isSelected ? 'bg-amber-400/80 ring-4 ring-inset ring-amber-500 z-10' : ''}
                   ${isHint ? 'bg-emerald-400/70 animate-pulse ring-4 ring-emerald-500 z-10' : ''}
                   ${isKingInCheck ? 'bg-rose-500/80 ring-4 ring-rose-600 animate-bounce' : ''}
@@ -198,14 +225,24 @@ export const ChessBoard: React.FC<ChessBoardProps> = ({
               >
                 {/* Coordinates */}
                 {showCoordinates && fileIdx === 0 && (
-                  <span className="absolute top-0.5 left-1 text-[10px] sm:text-xs font-bold opacity-75 pointer-events-none select-none">
+                  <span className="absolute top-0.5 left-0.5 sm:left-1 text-[8px] sm:text-[10px] md:text-xs font-bold opacity-75 pointer-events-none select-none leading-none">
                     {rank}
                   </span>
                 )}
                 {showCoordinates && rankIdx === 7 && (
-                  <span className="absolute bottom-0.5 right-1 text-[10px] sm:text-xs font-bold opacity-75 pointer-events-none select-none">
+                  <span className="absolute bottom-0.5 right-0.5 sm:right-1 text-[8px] sm:text-[10px] md:text-xs font-bold opacity-75 pointer-events-none select-none leading-none">
                     {file}
                   </span>
+                )}
+
+                {/* Stockfish best move target badge */}
+                {isStockfishTo && (
+                  <div className="absolute top-1 right-1 pointer-events-none z-30">
+                    <span className="flex h-2.5 w-2.5 relative">
+                      <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                      <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-emerald-500"></span>
+                    </span>
+                  </div>
                 )}
 
                 {/* Legal destination indicator */}
@@ -237,6 +274,35 @@ export const ChessBoard: React.FC<ChessBoardProps> = ({
             );
           });
         })}
+
+        {/* Stockfish Arrow Overlay */}
+        {arrowCoords && arrowCoords.from && arrowCoords.to && (
+          <svg className="absolute inset-0 w-full h-full pointer-events-none z-25 overflow-visible" viewBox="0 0 100 100">
+            <defs>
+              <marker
+                id="stockfish-arrowhead"
+                markerWidth="6"
+                markerHeight="6"
+                refX="4.5"
+                refY="3"
+                orient="auto"
+              >
+                <polygon points="0 0, 6 3, 0 6" fill="#10b981" opacity="0.9" />
+              </marker>
+            </defs>
+            <line
+              x1={`${arrowCoords.from.x}%`}
+              y1={`${arrowCoords.from.y}%`}
+              x2={`${arrowCoords.to.x}%`}
+              y2={`${arrowCoords.to.y}%`}
+              stroke="#10b981"
+              strokeWidth="2.8"
+              strokeLinecap="round"
+              opacity="0.85"
+              markerEnd="url(#stockfish-arrowhead)"
+            />
+          </svg>
+        )}
       </div>
     </div>
   );

@@ -294,6 +294,134 @@ Por favor, genera un análisis didáctico, riguroso y en español. Devuelve EXCL
   }
 });
 
+// API endpoint to explain a specific Stockfish best move or candidate line with AI
+app.post('/api/chess/explain-move', async (req, res) => {
+  try {
+    const { fen, moveSan, moveUci, scoreFormatted = '', pvSan = [], turn = 'w', rank = 1, history = [] } = req.body;
+    if (!fen || !moveSan) {
+      return res.status(400).json({ error: 'FEN and moveSan are required' });
+    }
+
+    const sideName = turn === 'w' ? 'Blancas' : 'Negras';
+    const opponentSideName = turn === 'w' ? 'Negras' : 'Blancas';
+
+    // Heuristic fallback explanation
+    const generateLocalMoveExplanation = () => {
+      let themes: string[] = ['Actividad de piezas'];
+      let summary = `La jugada ${moveSan} es recomendada por el motor para maximizar la actividad y el control de casillas clave.`;
+      let purpose = `Moviliza recursos hacia una posición más activa, mejorando la armonía entre piezas y preparando planes estratégicos en el centro o flanco.`;
+      let opponent = `El bando ${opponentSideName} debe responder con precisión para no ceder iniciativa o ventaja material.`;
+      let advice = `Evalúa siempre qué pieza del rival queda atacada o restringida tras realizar esta jugada.`;
+
+      if (moveSan.includes('+')) {
+        themes.push('Jaque directo', 'Ganancia de tiempo');
+        summary = `¡Jaque inmediato con ${moveSan}! Fuerza una respuesta defensiva restrictiva del rey rival.`;
+        purpose = `Obliga al rey rival a moverse o a interponer una pieza, desorganizando la coordinación enemiga.`;
+      } else if (moveSan.includes('x')) {
+        themes.push('Ganancia de material', 'Simplificación favorable');
+        summary = `Captura ${moveSan}, eliminando una pieza enemiga y alterando la estructura táctica.`;
+        purpose = `Busca ganar material neto o eliminar un defensor crucial de una casilla débil.`;
+      } else if (moveSan === 'O-O' || moveSan === 'O-O-O') {
+        themes.push('Seguridad del Rey', 'Activación de Torres');
+        summary = `Enroque fundamental que pone a resguardo al monarca y conecta las torres.`;
+        purpose = `Transición al medio juego con máxima seguridad del rey y preparación de columnas centrales.`;
+      } else if (['e4', 'd4', 'e5', 'd5', 'c4', 'c5'].includes(moveSan)) {
+        themes.push('Dominio del centro', 'Ocupación de espacio');
+        summary = `Ruptura u ocupación central con ${moveSan}, reclamando casillas estratégicas.`;
+        purpose = `Establece presencia en el corazón del tablero, abriendo diagonales para alfiles y dama.`;
+      } else if (['Nf3', 'Nc3', 'Nf6', 'Nc6', 'Cf3', 'Cc3', 'Cf6', 'Cc6'].some(n => moveSan.startsWith(n))) {
+        themes.push('Desarrollo de piezas menores', 'Presión central');
+        summary = `Desarrollo activo de caballo con ${moveSan}, controlando casillas centrales vitales.`;
+        purpose = `Acelera el desarrollo hacia casillas de máxima influencia y prepara el enroque.`;
+      }
+
+      return {
+        moveSan,
+        evaluation: scoreFormatted || '0.0',
+        summary,
+        strategicPurpose: purpose,
+        tacticalThemes: themes,
+        opponentResponses: opponent,
+        keyAdvice: advice,
+        aiPowered: false,
+      };
+    };
+
+    const ai = getGeminiClient();
+    if (!ai) {
+      return res.json(generateLocalMoveExplanation());
+    }
+
+    // Call Gemini 3.7 Flash for deep, didactic Grandmaster explanation of the specific move
+    const prompt = `
+Eres un Gran Maestro de Ajedrez y entrenador FIDE Senior de élite. El estudiante está analizando una posición con el motor Stockfish y solicita una explicación pedagógica y detallada de por qué la jugada "${moveSan}" es la mejor opción (Rank #${rank}) evaluada en ${scoreFormatted || 'evaluación equilibrada'}.
+
+Datos de la posición:
+- FEN: "${fen}"
+- Bando que juega: ${sideName} (${turn === 'w' ? 'Blancas' : 'Negras'})
+- Jugada analizada: ${moveSan} (UCI: ${moveUci || 'N/A'})
+- Línea principal calculada por el motor (PV): ${pvSan.slice(0, 7).join(' ') || moveSan}
+- Evaluación del motor: ${scoreFormatted}
+- Historial reciente: ${history.slice(-6).join(', ') || 'Apertura'}
+
+Instrucciones:
+Explica con maestría didáctica, claridad y entusiasmo por qué esta jugada es la más precisa según el motor. Menciona casillas, debilidades concretas y la lógica detrás de la variante calculada.
+
+Devuelve EXCLUSIVAMENTE un objeto JSON válido con la siguiente estructura exacta:
+{
+  "moveSan": "${moveSan}",
+  "evaluation": "${scoreFormatted}",
+  "summary": "Resumen conciso y directo (1 a 2 oraciones) de la idea principal y la amenaza directa.",
+  "strategicPurpose": "Explicación profunda en 1 o 2 párrafos sobre el plan estratégico, coordinación de piezas, control de casillas clave y motivos tácticos de fondo.",
+  "tacticalThemes": ["Tema 1 (ej: Clavada absoluta)", "Tema 2 (ej: Casilla fuerte d5)", "Tema 3 (ej: Ganancia de tiempo)"],
+  "opponentResponses": "Análisis de cómo responderá el rival (${opponentSideName}) según la variante del motor y por qué las defensas naturales alternativas fallan o son peores.",
+  "keyAdvice": "Consejo o regla de oro práctica de Gran Maestro para recordar este patrón en futuras partidas."
+}
+`;
+
+    const response = await ai.models.generateContent({
+      model: 'gemini-3.7-flash',
+      contents: prompt,
+      config: {
+        responseMimeType: 'application/json',
+        temperature: 0.35,
+      },
+    });
+
+    let jsonResponse;
+    try {
+      jsonResponse = JSON.parse(response.text || '{}');
+    } catch {
+      jsonResponse = null;
+    }
+
+    if (jsonResponse && jsonResponse.summary && jsonResponse.strategicPurpose) {
+      return res.json({
+        ...jsonResponse,
+        moveSan,
+        evaluation: scoreFormatted || jsonResponse.evaluation,
+        aiPowered: true,
+      });
+    }
+
+    return res.json(generateLocalMoveExplanation());
+  } catch (error) {
+    console.error('Error generating move explanation with Gemini:', error);
+    // Return fallback
+    const { moveSan, scoreFormatted = '' } = req.body;
+    return res.json({
+      moveSan: moveSan || 'Jugada',
+      evaluation: scoreFormatted,
+      summary: `La jugada ${moveSan} optimiza la actividad de las piezas según el cálculo táctico del motor.`,
+      strategicPurpose: `Esta jugada mejora la posición armónica y presiona sobre puntos débiles del rival.`,
+      tacticalThemes: ['Actividad de piezas', 'Cálculo del motor'],
+      opponentResponses: `El oponente debe encontrar la defensa más tenaz indicada por el cálculo.`,
+      keyAdvice: `Fíjate en las casillas clave que quedan bajo tu dominio tras esta jugada.`,
+      aiPowered: false,
+    });
+  }
+});
+
 // API endpoint for interactive Grandmaster Coach questions
 app.post('/api/chess/coach-chat', async (req, res) => {
   try {

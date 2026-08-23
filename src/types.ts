@@ -112,6 +112,47 @@ export interface PositionAnalysis {
   aiPowered?: boolean;
 }
 
+export interface StockfishLine {
+  id: number;
+  multipv: number;
+  depth: number;
+  scoreType: 'cp' | 'mate';
+  scoreValue: number; // in centipawns or turns to mate
+  scoreFormatted: string; // e.g. "+1.42", "-0.85", "M3", "-M2"
+  pvUci: string[]; // ['e2e4', 'e7e5', 'g1f3']
+  pvSan: string[]; // ['e4', 'e5', 'Cf3']
+  bestMove: {
+    uci: string;
+    from: string;
+    to: string;
+    san: string;
+    promotion?: string;
+  };
+}
+
+export interface StockfishState {
+  ready: boolean;
+  active: boolean;
+  depth: number;
+  seldepth: number;
+  nodes: number;
+  nps: number;
+  time: number;
+  bestMove: {
+    uci: string;
+    from: string;
+    to: string;
+    san: string;
+    promotion?: string;
+  } | null;
+  evaluationFormatted: string;
+  evaluationScore: number; // white perspective: positive = white advantage
+  isMate: boolean;
+  mateTurns: number | null;
+  lines: StockfishLine[];
+  error: string | null;
+}
+
 export interface PresetPosition {
   id: string;
   title: string;
@@ -119,6 +160,17 @@ export interface PresetPosition {
   fen: string;
   description: string;
   turn: 'w' | 'b';
+}
+
+export interface MoveAIExplanation {
+  moveSan: string;
+  evaluation?: string;
+  summary: string;
+  strategicPurpose: string;
+  tacticalThemes?: string[];
+  opponentResponses?: string;
+  keyAdvice?: string;
+  aiPowered?: boolean;
 }
 
 export interface PDFExportOptions {
