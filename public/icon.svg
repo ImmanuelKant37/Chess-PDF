@@ -1,0 +1,56 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="100%" height="100%">
+  <defs>
+    <linearGradient id="bgGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#0f172a"/>
+      <stop offset="50%" stop-color="#1e1b4b"/>
+      <stop offset="100%" stop-color="#0284c7"/>
+    </linearGradient>
+    <linearGradient id="goldGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#fef08a"/>
+      <stop offset="40%" stop-color="#f59e0b"/>
+      <stop offset="100%" stop-color="#b45309"/>
+    </linearGradient>
+    <linearGradient id="glowGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#38bdf8" stop-opacity="0.6"/>
+      <stop offset="100%" stop-color="#6366f1" stop-opacity="0"/>
+    </linearGradient>
+    <filter id="dropShadow" x="-10%" y="-10%" width="130%" height="130%">
+      <feDropShadow dx="0" dy="12" stdDeviation="16" flood-color="#000000" flood-opacity="0.5"/>
+    </filter>
+  </defs>
+
+  <!-- Rounded App Icon Background -->
+  <rect width="512" height="512" rx="112" fill="url(#bgGrad)"/>
+  
+  <!-- Subtle Border Glow -->
+  <rect x="6" y="6" width="500" height="500" rx="106" fill="none" stroke="#60a5fa" stroke-width="3" stroke-opacity="0.35"/>
+  
+  <!-- Ambient Inner Glow Circle -->
+  <circle cx="256" cy="230" r="170" fill="url(#glowGrad)"/>
+
+  <!-- Chess King Emblem Graphic -->
+  <g filter="url(#dropShadow)" transform="translate(0, 10)">
+    <!-- Cross on Top -->
+    <path d="M256 100 L256 142 M235 121 L277 121" stroke="url(#goldGrad)" stroke-width="14" stroke-linecap="round"/>
+    
+    <!-- Crown / Head of the King -->
+    <path d="M196 168 C196 150, 220 142, 256 142 C292 142, 316 150, 316 168 C316 182, 296 194, 280 200 C306 208, 332 232, 332 268 C332 300, 308 316, 256 316 C204 316, 180 300, 180 268 C180 232, 206 208, 232 200 C216 194, 196 182, 196 168 Z" fill="url(#goldGrad)"/>
+    
+    <!-- Crown Jewels / Cutouts -->
+    <circle cx="256" cy="175" r="7" fill="#0f172a"/>
+    <circle cx="224" cy="254" r="9" fill="#0f172a"/>
+    <circle cx="256" cy="250" r="11" fill="#0f172a"/>
+    <circle cx="288" cy="254" r="9" fill="#0f172a"/>
+    
+    <!-- Body Column & Curves -->
+    <path d="M214 316 L202 384 L310 384 L298 316 Z" fill="url(#goldGrad)"/>
+    
+    <!-- Base Pedestal -->
+    <path d="M168 392 C168 384, 184 384, 256 384 C328 384, 344 384, 344 392 L356 422 C356 430, 336 436, 256 436 C176 436, 156 430, 156 422 Z" fill="url(#goldGrad)"/>
+    <rect x="144" y="426" width="224" height="20" rx="8" fill="url(#goldGrad)"/>
+  </g>
+
+  <!-- Sparkles -->
+  <path d="M370 120 L374 135 L389 139 L374 143 L370 158 L366 143 L351 139 L366 135 Z" fill="#fde047" opacity="0.85"/>
+  <path d="M125 210 L128 220 L138 223 L128 226 L125 236 L122 226 L112 223 L122 220 Z" fill="#38bdf8" opacity="0.9"/>
+</svg>

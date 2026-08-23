@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import {
   Sparkles,
   Trophy,
@@ -10,7 +10,9 @@ import {
   Sun,
   Moon,
   Zap,
-  RotateCcw
+  RotateCcw,
+  Share2,
+  Check
 } from 'lucide-react';
 
 interface HeaderProps {
@@ -40,15 +42,45 @@ export const Header: React.FC<HeaderProps> = ({
   setDarkMode,
   onGenerateRandom
 }) => {
+  const [copiedShare, setCopiedShare] = useState(false);
+
+  const handleShare = async () => {
+    const shareData = {
+      title: 'Ajedrez Táctico IA - Entrenador & Jaque Mate',
+      text: 'Entrena ajedrez con IA, Stockfish, sugerencias didácticas y mates en 2, 3 y 4 jugadas.',
+      url: window.location.href,
+    };
+
+    if (navigator.share) {
+      try {
+        await navigator.share(shareData);
+        return;
+      } catch {
+        // Fall through to clipboard
+      }
+    }
+
+    try {
+      await navigator.clipboard.writeText(window.location.href);
+      setCopiedShare(true);
+      setTimeout(() => setCopiedShare(false), 2500);
+    } catch {
+      // Ignore
+    }
+  };
+
   return (
     <header className="w-full bg-white/90 dark:bg-slate-950/80 backdrop-blur-md border-b border-slate-200/80 dark:border-slate-800/80 sticky top-0 z-40 transition-colors">
       <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8">
         <div className="flex items-center justify-between h-14 sm:h-16">
           {/* Brand Logo & Tag */}
           <div className="flex items-center gap-2.5 sm:gap-3">
-            <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-2xl bg-gradient-to-br from-blue-600 via-indigo-600 to-indigo-800 text-white flex items-center justify-center shadow-md shadow-blue-500/20 border border-blue-400/30 font-serif text-xl sm:text-2xl font-black">
-              ♔
-            </div>
+            <img
+              src="/icon.svg"
+              alt="Ajedrez Táctico Icono"
+              className="w-9 h-9 sm:w-10 sm:h-10 rounded-2xl shadow-md shadow-blue-500/20 border border-blue-400/30 object-cover"
+              referrerPolicy="no-referrer"
+            />
             <div>
               <div className="flex items-center gap-1.5 sm:gap-2">
                 <h1 className="text-sm sm:text-base font-black tracking-tight text-slate-900 dark:text-white">
@@ -59,7 +91,7 @@ export const Header: React.FC<HeaderProps> = ({
                 </span>
               </div>
               <p className="hidden md:block text-[11px] text-slate-500 dark:text-slate-400 font-medium">
-                Generador y entrenador táctico de jaque mate
+                Generador de mates & Auto-Juego IA + Stockfish
               </p>
             </div>
           </div>
@@ -132,6 +164,30 @@ export const Header: React.FC<HeaderProps> = ({
                 <span>Racha: {stats.streak}</span>
               </div>
             )}
+
+            {/* Share app button */}
+            <button
+              id="header-share-btn"
+              onClick={handleShare}
+              className={`flex items-center gap-1.5 px-3 py-2 text-xs font-bold rounded-xl transition shadow-xs border ${
+                copiedShare
+                  ? 'bg-emerald-600 text-white border-emerald-600'
+                  : 'text-slate-700 dark:text-slate-200 bg-slate-100 hover:bg-slate-200/80 dark:bg-slate-900 dark:hover:bg-slate-800 border-slate-200/80 dark:border-slate-800'
+              }`}
+              title="Compartir aplicación"
+            >
+              {copiedShare ? (
+                <>
+                  <Check className="w-3.5 h-3.5 text-white" />
+                  <span className="hidden sm:inline">¡Enlace Copiado!</span>
+                </>
+              ) : (
+                <>
+                  <Share2 className="w-3.5 h-3.5 text-indigo-600 dark:text-indigo-400" />
+                  <span className="hidden sm:inline">Compartir</span>
+                </>
+              )}
+            </button>
 
             {/* Quick PDF button */}
             <button

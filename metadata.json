@@ -1,6 +1,6 @@
 {
   "name": "Ajedrez Táctico - Generador de Jaque Mate",
-  "description": "Generador de ejercicios de jaque mate en 2, 3 y 4 jugadas, exportación a PDF, modo de entrenamiento contra uno mismo con sugerencias de jugadas para ambas piezas, justificaciones didácticas impulsadas por IA y modo de análisis permanente de mejor jugada con motor Stockfish.",
+  "description": "Plataforma de entrenamiento táctico de ajedrez con generador de jaque mate en 2, 3 y 4 jugadas, auto-juego guiado con tutor IA dual, análisis permanente con Stockfish UCI, explicaciones pedagógicas de Gran Maestro por voz y exportación a PDF para impresión.",
   "requestFramePermissions": [],
   "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
 }
