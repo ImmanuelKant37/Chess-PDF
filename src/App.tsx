@@ -26,8 +26,13 @@ import { SoloSelfPlayTraining } from './components/SoloSelfPlayTraining';
 import { VsAIMode } from './components/VsAIMode';
 import { TournamentMode } from './components/TournamentMode';
 import { AdventureMode } from './components/AdventureMode';
+import { ShopView } from './components/ShopView';
 import { FloatingFullscreenButton } from './components/FloatingFullscreenButton';
 import { SettingsModal } from './components/SettingsModal';
+import { AdventureSaveState, HeroState } from './types/adventure';
+import { DEFAULT_ADVENTURE_SAVE } from './data/adventureData';
+
+const ADVENTURE_STORAGE_KEY = 'ajedrez_tactico_adventure_save_v1';
 
 export default function App() {
   // Navigation
@@ -35,6 +40,35 @@ export default function App() {
 
   // Settings Modal State
   const [isSettingsModalOpen, setIsSettingsModalOpen] = useState<boolean>(false);
+
+  // Adventure Save & Gold State
+  const [adventureSave, setAdventureSave] = useState<AdventureSaveState>(() => {
+    try {
+      const saved = localStorage.getItem(ADVENTURE_STORAGE_KEY);
+      if (saved) {
+        return JSON.parse(saved);
+      }
+    } catch {
+      // Fallback
+    }
+    return DEFAULT_ADVENTURE_SAVE;
+  });
+
+  // Keep adventureSave synced
+  const handleUpdateHeroState = (updatedHero: HeroState) => {
+    setAdventureSave((prev) => {
+      const next = {
+        ...prev,
+        hero: updatedHero
+      };
+      try {
+        localStorage.setItem(ADVENTURE_STORAGE_KEY, JSON.stringify(next));
+      } catch {
+        // Ignore
+      }
+      return next;
+    });
+  };
 
   // Puzzles and active index
   const [puzzles, setPuzzles] = useState<Puzzle[]>(COMPREHENSIVE_PUZZLES);
@@ -202,6 +236,7 @@ export default function App() {
         setActiveTab={setActiveTab}
         onOpenPDF={() => handleOpenPDFWithPuzzles(COMPREHENSIVE_PUZZLES, 'Cuaderno de Táctica de Ajedrez')}
         onOpenSettings={() => setIsSettingsModalOpen(true)}
+        goldCount={adventureSave.hero.gold}
         stats={{
           solvedCount: totalSolvedCount,
           streak: currentStreak,
@@ -221,6 +256,15 @@ export default function App() {
           <AdventureMode
             boardTheme="classic"
             notationFormat={notationFormat}
+          />
+        )}
+
+        {/* TAB: BAZAR / TIENDA DE TABLEROS, SKINS Y MASCOTAS */}
+        {activeTab === 'shop' && (
+          <ShopView
+            hero={adventureSave.hero}
+            onUpdateHero={handleUpdateHeroState}
+            onOpenAdventure={() => setActiveTab('adventure')}
           />
         )}
 

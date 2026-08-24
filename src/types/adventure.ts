@@ -2,7 +2,69 @@ export type StageType =
   | 'boss_duel'       // Partida completa o desde posición ventajosa contra un jefe temático
   | 'puzzle_trial'     // Reto táctico específico (encontrar el golpe ganador o mate)
   | 'handicap_duel'    // Batalla asimétrica (el jefe tiene ventajas o piezas extra)
-  | 'survival_mate'    // Sobrevivir o ejecutar mate en número exacto de jugadas bajo presión
+  | 'survival_mate';   // Sobrevivir o ejecutar mate en número exacto de jugadas bajo presión
+
+export type BoardThemeId = 
+  | 'classic'
+  | 'wood'
+  | 'green'
+  | 'blue'
+  | 'medieval'
+  | 'war'
+  | 'space'
+  | 'zombie'
+  | 'cyberpunk'
+  | 'animals'
+  | 'gold';
+
+export type PieceSkinId = 
+  | 'classic'
+  | 'medieval'
+  | 'war'
+  | 'space'
+  | 'zombie'
+  | 'cyberpunk'
+  | 'animals'
+  | 'gold';
+
+export type PetGrade = 'bronze' | 'silver' | 'gold' | 'diamond' | 'mythic';
+
+export interface AdvisorPet {
+  id: string;
+  name: string;
+  grade: PetGrade;
+  gradeLabel: string;
+  avatar: string;
+  icon: string;
+  description: string;
+  price: number;
+  goldMultiplier: number;
+  xpMultiplier: number;
+  perkName: string;
+  perkDescription: string;
+  didacticQuotes: string[];
+  threatQuotes: string[];
+  victoryQuotes: string[];
+}
+
+export interface ShopBoardItem {
+  id: BoardThemeId;
+  name: string;
+  description: string;
+  icon: string;
+  price: number;
+  previewColors: [string, string];
+  styleTag: string;
+}
+
+export interface ShopPieceItem {
+  id: PieceSkinId;
+  name: string;
+  description: string;
+  icon: string;
+  price: number;
+  styleTag: string;
+}
 
 export interface BossTrait {
   id: string;
@@ -45,6 +107,9 @@ export interface AdventureStage {
   id: string;
   worldId: string;
   stageNumber: number;
+  zoneName: string;
+  zoneIcon: string;
+  zoneType: 'entrance' | 'outpost' | 'stronghold' | 'elite' | 'boss';
   title: string;
   type: StageType;
   storyIntro: string;
@@ -76,18 +141,24 @@ export interface AdventureStage {
   };
 }
 
+export type WorldThemeStyle = 'medieval' | 'war' | 'space' | 'zombie' | 'cyberpunk' | 'animals';
+
 export interface AdventureWorld {
   id: string;
   number: number;
   name: string;
+  themeStyle: WorldThemeStyle;
+  boardTheme: BoardThemeId;
   subtitle: string;
   description: string;
   bgGradient: string;
   accentColor: string;
   borderAccent: string;
   icon: string;
+  mapBanner: string;
   requiredStarsToUnlock: number;
   bossName: string;
+  bossTitle: string;
   stages: AdventureStage[];
 }
 
@@ -108,6 +179,12 @@ export interface HeroState {
   unlockedSkills: string[];
   equippedRelics: string[];
   relicsInventory: string[];
+  equippedBoard: BoardThemeId;
+  equippedPieceSkin: PieceSkinId;
+  equippedPet: string | null;
+  ownedBoards: BoardThemeId[];
+  ownedPieceSkins: PieceSkinId[];
+  ownedPets: string[];
   consumables: Record<string, number>;
   totalWins: number;
   totalPuzzlesSolved: number;
@@ -122,10 +199,28 @@ export interface StageSaveData {
   completedAt: string;
 }
 
+export interface WorldHexProgressState {
+  visitedHexIds: string[];
+  claimedTreasureIds?: string[];
+  collectedKeys?: number;
+  clearedBattleHexIds?: string[];
+  currentHexId: string;
+  // Circular Hex Progression
+  collectedKeyHexIds?: string[];
+  collectedTreasureHexIds?: string[];
+  clearedSkirmishHexIds?: string[];
+}
+
 export interface AdventureSaveState {
   hero: HeroState;
   completedStages: Record<string, StageSaveData>;
   currentWorldId: string;
   selectedStageId: string | null;
   lastPlayedDate: string;
+  worldHexProgress?: Record<string, WorldHexProgressState>;
+  hexProgress?: Record<string, WorldHexProgressState>;
+  stages?: Record<string, StageSaveData>;
+  gold?: number;
+  consumables?: Record<string, number>;
 }
+

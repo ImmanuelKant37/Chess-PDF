@@ -42,7 +42,8 @@ import {
   HeroState,
   AdventureSaveState,
   StageSaveData,
-  HeroClass
+  HeroClass,
+  PieceSkinId
 } from '../types/adventure';
 import { BotProfile } from '../types';
 import {
@@ -52,6 +53,9 @@ import {
   DEFAULT_HERO_STATE,
   DEFAULT_ADVENTURE_SAVE
 } from '../data/adventureData';
+import { ADVISOR_PETS } from '../data/shopData';
+import { ShopView } from './ShopView';
+import { WorldHexMap } from './WorldHexMap';
 import { soundSystem } from '../utils/chessAudio';
 import { computeBotMove } from '../utils/chessBotEngine';
 import { formatSanForDisplay } from '../utils/notation';
@@ -494,9 +498,16 @@ export const AdventureMode: React.FC<AdventureModeProps> = ({
     if (moveHistory.length <= 40 || timeRemaining > 30) stars++;
     stars = Math.min(3, Math.max(1, stars));
 
-    // Calculate XP and Gold with relic/skill bonuses
+    // Calculate XP and Gold with relic/skill/pet bonuses
     let xp = stage.rewardXp;
     let gold = stage.rewardGold;
+
+    // Active Pet Multipliers from Shop
+    const equippedPet = ADVISOR_PETS.find(p => p.id === saveState.hero.equippedPet);
+    if (equippedPet) {
+      xp = Math.floor(xp * equippedPet.xpMultiplier);
+      gold = Math.floor(gold * equippedPet.goldMultiplier);
+    }
 
     if (saveState.hero.equippedRelics.includes('botas_de_caballeria')) {
       xp = Math.floor(xp * 1.25);
@@ -1203,130 +1214,56 @@ export const AdventureMode: React.FC<AdventureModeProps> = ({
             })}
           </div>
 
-          {/* Current World Showcase Banner */}
-          <div className={`w-full p-5 sm:p-6 rounded-3xl bg-gradient-to-r ${currentWorld.bgGradient} text-white border ${currentWorld.borderAccent} shadow-lg relative overflow-hidden`}>
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 relative z-10">
-              <div>
-                <div className="flex items-center gap-2 mb-1">
-                  <span className="text-2xl">{currentWorld.icon}</span>
-                  <span className="px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider bg-white/20 backdrop-blur-md">
-                    Mundo {currentWorld.number} de 6
-                  </span>
-                </div>
-                <h3 className="text-xl sm:text-2xl font-black tracking-tight">{currentWorld.name}</h3>
-                <p className="text-xs text-white/80 font-medium mt-0.5">{currentWorld.subtitle}</p>
-                <p className="text-xs text-white/70 max-w-xl mt-2 leading-relaxed">{currentWorld.description}</p>
-              </div>
-
-              <div className="p-3.5 rounded-2xl bg-black/30 backdrop-blur-md border border-white/10 flex items-center gap-3">
-                <Crown className="w-8 h-8 text-amber-400" />
-                <div>
-                  <span className="text-[10px] font-bold uppercase text-amber-300">Jefe Supremo</span>
-                  <p className="text-xs font-black truncate">{currentWorld.bossName}</p>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          {/* World Stages Interactive Path / Node Grid */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3.5">
-            {currentWorld.stages.map((stage) => {
-              const unlocked = isStageUnlocked(stage);
-              const stageSave = saveState.completedStages[stage.id];
-              const stars = stageSave?.stars || 0;
-              const isBoss = stage.stageNumber === 5;
-
-              return (
-                <div
-                  key={stage.id}
-                  onClick={() => {
-                    if (unlocked) {
-                      setInspectStage(stage);
-                      soundSystem.playSelect();
-                    } else {
-                      soundSystem.playWrong();
-                      showToast(`🔒 Completa los niveles anteriores para desbloquear.`);
-                    }
-                  }}
-                  className={`p-4 rounded-3xl border transition-all duration-200 relative overflow-hidden flex flex-col justify-between cursor-pointer ${
-                    unlocked
-                      ? isBoss
-                        ? 'bg-gradient-to-b from-amber-500/10 to-indigo-500/10 dark:from-amber-950/40 dark:to-indigo-950/40 border-amber-500/40 hover:border-amber-500 shadow-md hover:scale-[1.02]'
-                        : 'bg-white dark:bg-slate-900 border-slate-200/80 dark:border-slate-800/80 hover:border-indigo-400 dark:hover:border-indigo-600 shadow-sm hover:scale-[1.02]'
-                      : 'bg-slate-100/60 dark:bg-slate-950/60 border-slate-200/40 dark:border-slate-800/40 opacity-70 cursor-not-allowed'
-                  }`}
-                >
-                  {/* Top Node Header */}
-                  <div className="flex items-center justify-between mb-3">
-                    <span className={`px-2 py-0.5 rounded-full text-[10px] font-extrabold uppercase ${
-                      isBoss
-                        ? 'bg-amber-500/20 text-amber-700 dark:text-amber-300 border border-amber-500/30'
-                        : 'bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 border border-indigo-500/20'
-                    }`}>
-                      {isBoss ? '👑 Jefe Final' : `Nivel ${stage.stageNumber}`}
-                    </span>
-
-                    {unlocked ? (
-                      <div className="flex items-center gap-0.5">
-                        {[1, 2, 3].map((s) => (
-                          <Star
-                            key={s}
-                            className={`w-3.5 h-3.5 ${
-                              s <= stars ? 'text-amber-500 fill-amber-500' : 'text-slate-300 dark:text-slate-700'
-                            }`}
-                          />
-                        ))}
-                      </div>
-                    ) : (
-                      <Lock className="w-4 h-4 text-slate-400" />
-                    )}
-                  </div>
-
-                  {/* Boss Portrait & Name */}
-                  <div className="flex items-center gap-3 my-2">
-                    <img
-                      src={stage.bossAvatar}
-                      alt={stage.bossName}
-                      className="w-12 h-12 rounded-2xl object-cover border border-slate-300 dark:border-slate-700 shadow-sm"
-                      referrerPolicy="no-referrer"
-                    />
-                    <div className="min-w-0">
-                      <h4 className="text-xs font-black text-slate-900 dark:text-white truncate">
-                        {stage.title}
-                      </h4>
-                      <p className="text-[11px] text-slate-500 dark:text-slate-400 truncate">
-                        {stage.bossName}
-                      </p>
-                      <span className="text-[10px] font-bold text-indigo-600 dark:text-indigo-400">
-                        Elo {stage.bossElo}
-                      </span>
-                    </div>
-                  </div>
-
-                  {/* Bottom Action Footer */}
-                  <div className="pt-3 mt-2 border-t border-slate-100 dark:border-slate-800/80 flex items-center justify-between text-xs">
-                    <span className="text-[10px] font-bold text-slate-400">
-                      {stage.type === 'puzzle_trial' ? '🧩 Prueba Táctica' : '⚔️ Duelo de Ajedrez'}
-                    </span>
-                    <button className="text-xs font-extrabold text-indigo-600 dark:text-indigo-400 flex items-center gap-1">
-                      <span>Jugar</span>
-                      <ChevronRight className="w-3.5 h-3.5" />
-                    </button>
-                  </div>
-                </div>
-              );
-            })}
-          </div>
+          {/* Current World Hexagonal Interactive Map */}
+          <WorldHexMap
+            world={currentWorld}
+            saveState={saveState}
+            onSelectStage={(stage) => {
+              setInspectStage(stage);
+              soundSystem.playSelect();
+            }}
+            onStartStage={(stage) => {
+              handleStartStage(stage);
+            }}
+            onPrevWorld={() => {
+              if (selectedWorldIndex > 0) {
+                setSelectedWorldIndex(selectedWorldIndex - 1);
+                soundSystem.playSelect();
+              }
+            }}
+            onNextWorld={() => {
+              if (selectedWorldIndex < ADVENTURE_WORLDS.length - 1) {
+                setSelectedWorldIndex(selectedWorldIndex + 1);
+                soundSystem.playSelect();
+              }
+            }}
+            hasPrevWorld={selectedWorldIndex > 0}
+            hasNextWorld={selectedWorldIndex < ADVENTURE_WORLDS.length - 1}
+            totalWorldsCount={ADVENTURE_WORLDS.length}
+            onUpdateSaveState={setSaveState}
+          />
         </div>
       )}
 
       {/* ==================================================== */}
-      {/* VIEW 2: LIVE BATTLE ARENA */}
+      {/* VIEW 2: LIVE BATTLE ARENA WITH SCENIC WALLPAPER */}
       {/* ==================================================== */}
       {activeView === 'battle' && activeStage && (
-        <div className="flex flex-col gap-4">
+        <div className="relative flex flex-col gap-4 p-3 sm:p-5 rounded-3xl overflow-hidden border border-slate-700/80 shadow-2xl bg-slate-950/95">
+          {/* Scenic Dynamic World Wallpaper Backdrop */}
+          <div className="absolute inset-0 -z-10 overflow-hidden pointer-events-none">
+            <img
+              src={currentWorld.mapBanner}
+              alt={currentWorld.name}
+              className="w-full h-full object-cover opacity-20 scale-105 blur-[1px]"
+              referrerPolicy="no-referrer"
+            />
+            <div className={`absolute inset-0 bg-gradient-to-b ${currentWorld.bgGradient} opacity-80`} />
+            <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,transparent_0%,rgba(2,6,23,0.9)_100%)]" />
+          </div>
+
           {/* Top Battle Banner: Player vs Boss HP & Dialogue */}
-          <div className="p-4 rounded-3xl bg-slate-900 border border-slate-800 text-white shadow-xl flex flex-col gap-3">
+          <div className="p-4 rounded-3xl bg-slate-900/90 backdrop-blur-md border border-slate-800/90 text-white shadow-xl flex flex-col gap-3">
             {/* Header with Back button and stage name */}
             <div className="flex items-center justify-between border-b border-slate-800 pb-2.5">
               <button
@@ -1358,7 +1295,7 @@ export const AdventureMode: React.FC<AdventureModeProps> = ({
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 items-center">
               {/* Player Side */}
               <div className="flex items-center gap-3">
-                <div className="w-12 h-12 rounded-2xl bg-indigo-600 flex items-center justify-center text-2xl border-2 border-indigo-400 shrink-0">
+                <div className="w-12 h-12 rounded-2xl bg-indigo-600 flex items-center justify-center text-2xl border-2 border-indigo-400 shrink-0 shadow-md">
                   {CLASS_INFO[saveState.hero.heroClass].icon}
                 </div>
                 <div className="flex-1">
@@ -1368,7 +1305,7 @@ export const AdventureMode: React.FC<AdventureModeProps> = ({
                   </div>
                   <div className="w-full h-2.5 rounded-full bg-slate-800 overflow-hidden">
                     <div
-                      className="h-full bg-emerald-500 rounded-full transition-all duration-300"
+                      className="h-full bg-emerald-500 rounded-full transition-all duration-300 shadow-xs"
                       style={{ width: `${playerHp}%` }}
                     />
                   </div>
@@ -1384,7 +1321,7 @@ export const AdventureMode: React.FC<AdventureModeProps> = ({
                   </div>
                   <div className="w-full h-2.5 rounded-full bg-slate-800 overflow-hidden">
                     <div
-                      className="h-full bg-rose-500 rounded-full transition-all duration-300"
+                      className="h-full bg-rose-500 rounded-full transition-all duration-300 shadow-xs"
                       style={{ width: `${(bossHp / activeStage.bossMaxHp) * 100}%` }}
                     />
                   </div>
@@ -1392,7 +1329,7 @@ export const AdventureMode: React.FC<AdventureModeProps> = ({
                 <img
                   src={activeStage.bossAvatar}
                   alt={activeStage.bossName}
-                  className="w-12 h-12 rounded-2xl object-cover border-2 border-rose-500 shrink-0"
+                  className="w-12 h-12 rounded-2xl object-cover border-2 border-rose-500 shrink-0 shadow-md"
                   referrerPolicy="no-referrer"
                 />
               </div>
@@ -1400,7 +1337,7 @@ export const AdventureMode: React.FC<AdventureModeProps> = ({
 
             {/* Boss Dialogue Speech Bubble */}
             {bossDialogue && (
-              <div className="p-3 rounded-2xl bg-slate-800/90 border border-slate-700/80 text-xs text-amber-200 flex items-start gap-2.5 italic">
+              <div className="p-3 rounded-2xl bg-slate-800/90 border border-slate-700/80 text-xs text-amber-200 flex items-start gap-2.5 italic shadow-sm">
                 <Flame className="w-4 h-4 text-amber-400 shrink-0 mt-0.5" />
                 <span>"{bossDialogue}"</span>
               </div>
@@ -1410,7 +1347,7 @@ export const AdventureMode: React.FC<AdventureModeProps> = ({
           {/* Main Board & Action Sidebar */}
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-4">
             {/* Chess Board Area */}
-            <div className="lg:col-span-8 flex flex-col items-center justify-center p-3 sm:p-5 rounded-3xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800/80 shadow-sm">
+            <div className="lg:col-span-8 flex flex-col items-center justify-center p-2 sm:p-4 rounded-3xl bg-slate-900/80 backdrop-blur-sm border border-slate-800/90 shadow-xl">
               <div className="w-full max-w-[480px] sm:max-w-[540px] aspect-square">
                 <ChessBoard
                   chess={chess}
@@ -1420,14 +1357,62 @@ export const AdventureMode: React.FC<AdventureModeProps> = ({
                   highlightMove={highlightMove}
                   hintSquare={hintSquare}
                   stockfishBestMove={stockfishHint}
-                  boardTheme={boardTheme}
+                  boardTheme={currentWorld.boardTheme || saveState.hero.equippedBoard || boardTheme}
+                  pieceSkin={saveState.hero.equippedPieceSkin || (currentWorld.themeStyle as PieceSkinId) || 'classic'}
                   interactive={gameStatus === 'playing' && !bossIsThinking}
+                  wallpaper={currentWorld.mapBanner}
+                  showFrameDecorations={true}
                 />
               </div>
             </div>
 
             {/* Battle Action & Tactical Deck */}
             <div className="lg:col-span-4 flex flex-col gap-3.5">
+              {/* Active Mascot Consejera in Battle */}
+              {(() => {
+                const pet = ADVISOR_PETS.find(p => p.id === saveState.hero.equippedPet) || ADVISOR_PETS[0];
+                return (
+                  <div className="p-3.5 rounded-3xl bg-gradient-to-r from-indigo-950 via-slate-900 to-indigo-950 border border-indigo-500/40 text-white shadow-md flex flex-col gap-2">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2.5">
+                        <div className="relative">
+                          <img
+                            src={pet.avatar}
+                            alt={pet.name}
+                            className="w-10 h-10 rounded-xl object-cover border border-indigo-400/50"
+                            referrerPolicy="no-referrer"
+                          />
+                          <span className="absolute -bottom-1 -right-1 text-sm">{pet.icon}</span>
+                        </div>
+                        <div>
+                          <div className="flex items-center gap-1.5">
+                            <span className="text-xs font-black">{pet.name}</span>
+                            <span className="px-1.5 py-0.2 rounded-full text-[9px] font-bold bg-amber-500/20 text-amber-300 border border-amber-500/30">
+                              {pet.gradeLabel}
+                            </span>
+                          </div>
+                          <p className="text-[10px] text-indigo-300 font-semibold">{pet.perkName}</p>
+                        </div>
+                      </div>
+                      <span className="text-[10px] font-bold text-amber-400 bg-amber-500/10 px-2 py-0.5 rounded-lg border border-amber-500/20">
+                        +{Math.round((pet.goldMultiplier - 1) * 100)}% 🪙
+                      </span>
+                    </div>
+                    {/* Live Didactic Tip */}
+                    <div className="p-2 rounded-xl bg-indigo-900/60 border border-indigo-500/30 text-[11px] text-slate-200 italic flex items-start gap-1.5">
+                      <Sparkles className="w-3.5 h-3.5 text-amber-400 shrink-0 mt-0.5" />
+                      <span>
+                        {chess.inCheck()
+                          ? '"¡Alerta de Jaque! Protege al Rey o bloquea la línea de ataque inmediatamente."'
+                          : moveHistory.length < 6
+                          ? '"Apertura: ' + pet.didacticQuotes[0] + '"'
+                          : '"' + pet.didacticQuotes[moveHistory.length % pet.didacticQuotes.length] + '"'}
+                      </span>
+                    </div>
+                  </div>
+                );
+              })()}
+
               {/* Turn & Status Pill */}
               <div className="p-4 rounded-3xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800/80 shadow-sm">
                 <div className="flex items-center justify-between mb-3">
@@ -1686,89 +1671,19 @@ export const AdventureMode: React.FC<AdventureModeProps> = ({
       )}
 
       {/* ==================================================== */}
-      {/* VIEW 4: POTION SHOP & BAZAAR */}
+      {/* VIEW 4: BAZAAR & ITEM / PET / SKIN SHOP */}
       {/* ==================================================== */}
       {activeView === 'shop' && (
-        <div className="p-6 rounded-3xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800/80 shadow-sm flex flex-col gap-6">
-          <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-4">
-            <div>
-              <div className="flex items-center gap-2">
-                <span className="text-2xl">🏺</span>
-                <h3 className="text-lg font-black text-slate-900 dark:text-white">Bazar del Gran Maestro</h3>
-              </div>
-              <p className="text-xs text-slate-500">Canjea el oro obtenido en tus victorias por consumibles y reliquias didácticas</p>
-            </div>
-            <div className="px-4 py-2 rounded-2xl bg-amber-50 dark:bg-amber-950/40 border border-amber-300 dark:border-amber-800 text-sm font-black text-amber-700 dark:text-amber-300 flex items-center gap-2">
-              <Coins className="w-5 h-5 text-amber-500" />
-              <span>{saveState.hero.gold} Oro</span>
-            </div>
-          </div>
-
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-            {/* Oracle Potion */}
-            <div className="p-5 rounded-3xl border border-purple-200 dark:border-purple-800/60 bg-gradient-to-b from-purple-50/50 to-white dark:from-purple-950/20 dark:to-slate-900 flex flex-col justify-between gap-4">
-              <div>
-                <span className="text-4xl block mb-2">🔮</span>
-                <h4 className="text-sm font-black text-purple-950 dark:text-purple-200">Poción de Oráculo</h4>
-                <p className="text-xs text-slate-600 dark:text-slate-400 mt-1 leading-relaxed">
-                  Revela la mejor jugada didáctica del Gran Maestro en plena batalla.
-                </p>
-                <div className="mt-2 text-xs font-bold text-purple-600">
-                  En inventario: x{saveState.hero.consumables.oracle_potion || 0}
-                </div>
-              </div>
-              <button
-                onClick={() => handleBuyConsumable('oracle_potion', 80)}
-                className="w-full py-2.5 rounded-xl bg-purple-600 hover:bg-purple-500 text-white text-xs font-extrabold flex items-center justify-center gap-1.5 shadow-md shadow-purple-500/20 cursor-pointer"
-              >
-                <Coins className="w-4 h-4 text-amber-300" />
-                <span>Comprar por 80 Oro</span>
-              </button>
-            </div>
-
-            {/* Kronos Time Warp */}
-            <div className="p-5 rounded-3xl border border-amber-200 dark:border-amber-800/60 bg-gradient-to-b from-amber-50/50 to-white dark:from-amber-950/20 dark:to-slate-900 flex flex-col justify-between gap-4">
-              <div>
-                <span className="text-4xl block mb-2">⏳</span>
-                <h4 className="text-sm font-black text-amber-950 dark:text-amber-200">Reloj de Arena de Krónos</h4>
-                <p className="text-xs text-slate-600 dark:text-slate-400 mt-1 leading-relaxed">
-                  Añade +45 segundos al reloj de juego en partidas con límite de tiempo.
-                </p>
-                <div className="mt-2 text-xs font-bold text-amber-600">
-                  En inventario: x{saveState.hero.consumables.time_warp || 0}
-                </div>
-              </div>
-              <button
-                onClick={() => handleBuyConsumable('time_warp', 60)}
-                className="w-full py-2.5 rounded-xl bg-amber-600 hover:bg-amber-500 text-white text-xs font-extrabold flex items-center justify-center gap-1.5 shadow-md shadow-amber-500/20 cursor-pointer"
-              >
-                <Coins className="w-4 h-4 text-amber-200" />
-                <span>Comprar por 60 Oro</span>
-              </button>
-            </div>
-
-            {/* Shield Rune */}
-            <div className="p-5 rounded-3xl border border-indigo-200 dark:border-indigo-800/60 bg-gradient-to-b from-indigo-50/50 to-white dark:from-indigo-950/20 dark:to-slate-900 flex flex-col justify-between gap-4">
-              <div>
-                <span className="text-4xl block mb-2">🛡️</span>
-                <h4 className="text-sm font-black text-indigo-950 dark:text-indigo-200">Runa de Salvaguarda Real</h4>
-                <p className="text-xs text-slate-600 dark:text-slate-400 mt-1 leading-relaxed">
-                  Otorga protección pasiva contra pérdidas de salud en jugadas imprecisas.
-                </p>
-                <div className="mt-2 text-xs font-bold text-indigo-600">
-                  En inventario: x{saveState.hero.consumables.shield_rune || 0}
-                </div>
-              </div>
-              <button
-                onClick={() => handleBuyConsumable('shield_rune', 100)}
-                className="w-full py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-extrabold flex items-center justify-center gap-1.5 shadow-md shadow-indigo-500/20 cursor-pointer"
-              >
-                <Coins className="w-4 h-4 text-amber-300" />
-                <span>Comprar por 100 Oro</span>
-              </button>
-            </div>
-          </div>
-        </div>
+        <ShopView
+          hero={saveState.hero}
+          onUpdateHero={(updatedHero) => {
+            setSaveState((prev) => ({
+              ...prev,
+              hero: updatedHero
+            }));
+          }}
+          onOpenAdventure={() => setActiveView('world_map')}
+        />
       )}
     </div>
   );

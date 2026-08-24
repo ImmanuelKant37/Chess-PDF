@@ -251,6 +251,32 @@ class ChessSoundSystem {
     osc.start(now);
     osc.stop(now + 0.05);
   }
+
+  // Generic play dispatcher
+  public play(sound: 'select' | 'move' | 'capture' | 'check' | 'victory' | 'defeat' | 'wrong' | 'blunder' | 'gameStart' | 'gameWon') {
+    switch (sound) {
+      case 'select':
+        return this.playSelect();
+      case 'move':
+        return this.playMove();
+      case 'capture':
+        return this.playCapture();
+      case 'check':
+        return this.playCheck();
+      case 'victory':
+      case 'gameWon':
+        return this.playVictory();
+      case 'defeat':
+        return this.playDefeat();
+      case 'wrong':
+      case 'blunder':
+        return this.playWrong();
+      case 'gameStart':
+        return this.playMove();
+      default:
+        return this.playSelect();
+    }
+  }
 }
 
 export const chessAudio = new ChessSoundSystem();
